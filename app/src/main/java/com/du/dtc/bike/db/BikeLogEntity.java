@@ -11,12 +11,12 @@ public class BikeLogEntity {
     public long timestamp;
     public int speed;
     public double odo;
-    
+
     // Battery and Power
     public double voltage;
     public double current;
     public double soc;
-    
+
     // Temperatures
     public double tempBalanceReg;
     public double tempFet;
@@ -29,4 +29,9 @@ public class BikeLogEntity {
 
     // Cells
     public List<Double> cellVoltages;
+
+    // 👉 BỔ SUNG: Throttle & ADC (Mặc định là 0.0 với các bản ghi cũ)
+    public double adc1;
+    public double adc2;
+    public double throttle;
 }

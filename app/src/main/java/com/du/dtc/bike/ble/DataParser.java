@@ -12,10 +12,28 @@ public class DataParser {
 
     // Cờ toàn cục báo hiệu có lỗi JSON
     public static boolean isDataError = true;
+    private static int errorResetCD = 0;
+
+    private static void checkErrorReset() {
+        if (isDataError) {
+            errorResetCD--;
+            if (errorResetCD <= 0) {
+                isDataError = false;
+                errorResetCD = 0;
+            }
+        }
+    }
+
+    private static void setError() {
+        isDataError = true;
+        errorResetCD = 50;
+    }
 
     public static void parseBinary(String uuid, byte[] bytes, BikeData data) {
         if (bytes == null || bytes.length == 0)
             return;
+
+        checkErrorReset();
 
         try {
             ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
@@ -63,18 +81,20 @@ public class DataParser {
 
                 default:
                     BleDebugLogger.d("DataParser MISSING", "[" + uuid + "] " + BleDebugLogger.bytesToHex(bytes));
-                    isDataError = true;
+                    setError();
             }
 
         } catch (Exception e) {
             BleDebugLogger.e("DataParser ERROR", "[" + uuid + "] " + BleDebugLogger.bytesToHex(bytes));
-            isDataError = true;
+            setError();
         }
     }
 
     public static void parseJson(String jsonStr, BikeData data) {
         if (jsonStr == null || jsonStr.isEmpty())
             return;
+
+        checkErrorReset();
 
         JSONObject json;
         try {
@@ -135,7 +155,7 @@ public class DataParser {
                 }
             }
         } catch (Exception e) {
-            isDataError = true;
+            setError();
             BleDebugLogger.e("DataParser", "Lỗi Parse BMS: " + e.getMessage());
             BleDebugLogger.e("DataParser", "RAW JSON BMS: " + jsonStr);
         }
@@ -181,7 +201,7 @@ public class DataParser {
                 data.pcbState = newState;
             }
         } catch (Exception e) {
-            isDataError = true;
+            setError();
             BleDebugLogger.e("DataParser", "Lỗi Parse Config/PCB: " + e.getMessage());
             BleDebugLogger.e("DataParser", "RAW JSON PCB: " + jsonStr);
         }
@@ -213,7 +233,7 @@ public class DataParser {
                 }
             }
         } catch (Exception e) {
-            isDataError = true;
+            setError();
             BleDebugLogger.e("DataParser", "Lỗi Parse CellVols: " + e.getMessage());
             BleDebugLogger.e("DataParser", "RAW JSON CELLS: " + jsonStr);
         }
@@ -227,8 +247,9 @@ public class DataParser {
         if (bytes == null || bytes.length == 0)
             return;
 
+        checkErrorReset();
+
         try {
-            // Sử dụng class DashboardTelemetry mà chúng ta đã tạo trước đó
             DashboardTelemetry telemetry = DashboardTelemetry.fromBytes(bytes);
 
             if (telemetry != null) {
@@ -272,6 +293,8 @@ public class DataParser {
     public static void parseLockStatus(byte[] bytes, BikeData data) {
         if (bytes == null || bytes.length == 0)
             return;
+
+        checkErrorReset();
 
         try {
             int lockFlag = bytes[0] & 0xFF;

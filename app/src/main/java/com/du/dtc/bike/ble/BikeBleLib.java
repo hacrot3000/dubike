@@ -336,11 +336,19 @@ public class BikeBleLib {
         scanCallback = new ScanCallback() {
             @Override
             public void onScanResult(int callbackType, ScanResult result) {
-                // ĐÃ SỬA: TRUYỀN TOÀN BỘ result VÀO THAY VÌ CHỈ TRUYỀN device
                 if (isDatBike(result)) {
                     BluetoothDevice device = result.getDevice();
-                    String name = device.getName() != null ? device.getName() : "[" + device.getAddress() + "]";
-                    listener.onDeviceFound(device, name, result.getRssi());
+
+                    String name = device.getName();
+                    if (name == null && result.getScanRecord() != null
+                            && result.getScanRecord().getDeviceName() != null) {
+                        name = result.getScanRecord().getDeviceName();
+                    }
+
+                    String displayName = (name != null && !name.trim().isEmpty()) ? name
+                            : "[" + device.getAddress() + "]";
+
+                    listener.onDeviceFound(device, displayName, result.getRssi());
                 }
             }
         };
@@ -525,6 +533,10 @@ public class BikeBleLib {
 
     // Lọc thiết bị bộ nhớ đệm (Connected/Bonded) - Không có Gói quảng cáo
     public boolean isDatBike(BluetoothDevice device) {
+        if (!BikeBleFreq.isOnlyShowDatBike) {
+            return true;
+        }
+
         if (device == null)
             return false;
 
@@ -566,9 +578,7 @@ public class BikeBleLib {
             }
         }
 
-        // 5. CACHED UUIDs (Tuyệt chiêu cuối với xe đã Bonded sẵn từ trước)
-        // Hệ điều hành Android có thể lén cache lại quảng cáo UUID của xe dù hiện tại
-        // không nằm trong vùng quét
+        // 5. CACHED UUIDs
         if (device.getUuids() != null) {
             Set<android.os.ParcelUuid> targetUuids = new HashSet<>(Arrays.asList(
                     android.os.ParcelUuid.fromString(DASHBOARD_SVC),

@@ -92,7 +92,18 @@ public class MainActivity extends AppCompatActivity {
             BikeBackgroundService.LocalBinder binder = (BikeBackgroundService.LocalBinder) service;
             bikeService = binder.getService();
             isBound = true;
+
+            // Lấy thư viện BLE gốc đang chạy trong Service
             bikeBleLib = bikeService.getBikeBleLib();
+
+            // 1. Đồng bộ ngay dữ liệu hiện có trong RAM của Service lên giao diện
+            globalBikeData = bikeService.globalBikeData;
+            runOnUiThread(() -> updateUI(globalBikeData));
+
+            // 2. Ép vòng lặp Bluetooth đọc dữ liệu mới ngay lập tức
+            if (bikeBleLib != null) {
+                bikeBleLib.forceImmediatePoll();
+            }
         }
 
         @Override
@@ -920,8 +931,8 @@ public class MainActivity extends AppCompatActivity {
         com.du.dtc.bike.ble.BikeBleFreq.isAppActive = true;
         BleDebugLogger.i("BikeApp", "🚀 Mode: Active (High Frequency)");
 
-        // 👉 KÍCH HOẠT LẤY DATA NGAY LẬP TỨC BỎ QUA THỜI GIAN NGỦ
-        if (bikeBleLib != null) {
+        // KÍCH HOẠT LẤY DATA NGAY LẬP TỨC
+        if (isBound && bikeBleLib != null) {
             bikeBleLib.forceImmediatePoll();
         }
     }

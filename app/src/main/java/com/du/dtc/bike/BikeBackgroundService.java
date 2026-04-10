@@ -61,7 +61,8 @@ public class BikeBackgroundService extends Service {
 
         Notification notification = createNotification("DTC Bike: Dịch vụ đang chạy ngầm");
 
-        // BỌC TRY-CATCH NHIỀU LỚP: ƯU TIÊN connectedDevice, FALLBACK VỀ GENERIC FOREGROUND
+        // BỌC TRY-CATCH NHIỀU LỚP: ƯU TIÊN connectedDevice, FALLBACK VỀ GENERIC
+        // FOREGROUND
         boolean foregroundStarted = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
@@ -186,6 +187,11 @@ public class BikeBackgroundService extends Service {
             entity.tempPin4 = globalBikeData.tempPin4;
             entity.tempMotor = globalBikeData.tempMotor;
             entity.tempController = globalBikeData.tempController;
+
+            // adc
+            entity.adc1 = globalBikeData.adc1;
+            entity.adc2 = globalBikeData.adc2;
+            entity.throttle = globalBikeData.throttle;
 
             // Cells
             if (globalBikeData.cellVoltages != null) {
