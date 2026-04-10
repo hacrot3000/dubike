@@ -60,7 +60,25 @@ public class BikeBleControl {
     }
 
     public boolean canControl() {
-        return false;
+        return true;
+    }
+
+    // --- CẤU HÌNH LẮNG NGHE (NOTIFY) ---
+    public void enableNotification(UUID serviceUuid, UUID charUuid) {
+        if (bluetoothGatt == null)
+            return;
+        BluetoothGattService service = bluetoothGatt.getService(serviceUuid);
+        if (service != null) {
+            BluetoothGattCharacteristic characteristic = service.getCharacteristic(charUuid);
+            if (characteristic != null) {
+                bluetoothGatt.setCharacteristicNotification(characteristic, true);
+                BluetoothGattDescriptor descriptor = characteristic.getDescriptor(CCCD_UUID);
+                if (descriptor != null) {
+                    descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                    bluetoothGatt.writeDescriptor(descriptor);
+                }
+            }
+        }
     }
 
     public void findBike() {

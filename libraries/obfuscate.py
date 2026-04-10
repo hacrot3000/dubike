@@ -16,6 +16,7 @@ LIB_SECRETS = {
     "getDashboardCharacteristicUuid": "6d2eb205-6f9b-4ecf-bb1b-a5fad127c66c",
     "getInfoServiceUuid": "d4905f67-8931-4faa-8c61-86ec7490f3c5",
     "getErrorCharacteristicUuid": "460a5bc5-a5f5-4968-b548-dc218935245e",
+    "getAuthServiceUuid": "10cb0217-ff02-4474-a1ef-6fd88b5bdaea",
 }
 
 # 3. Thông tin mã hóa Key của Log

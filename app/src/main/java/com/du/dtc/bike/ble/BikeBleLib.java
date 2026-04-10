@@ -194,12 +194,26 @@ public class BikeBleLib {
         // 1. Đồng bộ giờ
         bikeControl.syncCurrentTime();
 
+        // 2. Kích hoạt Notifications
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            bikeControl.enableNotification(UUID.fromString(DASHBOARD_SVC), UUID.fromString(CHAR_DASHBOARD));
+        }, 100);
         // 3. Phục hồi session & Bắt đầu xác thực
         // Phục hồi PIN & Bắt đầu xác thực (Thay thế đoạn code cũ của bạn)
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             // Bắt đầu vòng lặp đọc Log (Vẫn giữ nguyên)
             startDataPolling(gatt);
         }, 600);
+    }
+
+    public void handleCharacteristicReadLogic(BluetoothGattCharacteristic characteristic) {
+        BleDebugLogger.log(characteristic);
+        processIncomingData(characteristic);
+    }
+
+    public void handleCharacteristicChangedLogic(BluetoothGattCharacteristic characteristic) {
+        BleDebugLogger.log(characteristic);
+        processIncomingData(characteristic);
     }
 
     public void handleRssiRead(int rssi) {
@@ -209,6 +223,30 @@ public class BikeBleLib {
         if (binaryListener != null) {
             byte[] rssiBytes = new byte[] { (byte) rssi };
             binaryListener.onBinaryReceived("rssi_val", rssiBytes);
+        }
+    }
+
+    private void processIncomingData(BluetoothGattCharacteristic characteristic) {
+        byte[] value = characteristic.getValue();
+        if (value != null && value.length > 0) {
+            String uuid = characteristic.getUuid().toString().substring(0, 8).toLowerCase();
+
+            // CHỈ đẩy các gói dữ liệu thuần Binary xuống binaryListener
+            // Auth UUIDs (c8eaf27b, c75ebe03) đi qua processAuthResponse riêng, không xuống
+            // đây
+            if (uuid.equals("6d2eb205") || // Dashboard Data (41 bytes)
+                    uuid.equals("eec8fd7f") || // Smartkey Echo
+                    uuid.equals(CHAR_ERROR.substring(0, 8).toLowerCase())) { // Mã lỗi hệ thống
+
+                if (binaryListener != null) {
+                    binaryListener.onBinaryReceived(uuid, value);
+                }
+            } else {
+                // Các UUID còn lại (Bao gồm BATTERY_LOG, BIKE_LOG, Tên xe, Số khung...)
+                // Chuyển thành String UTF-8 và gửi về DataListener để Parse JSON
+                String textData = new String(value, java.nio.charset.StandardCharsets.UTF_8).trim();
+                sendToUI(textData);
+            }
         }
     }
 
@@ -366,11 +404,13 @@ public class BikeBleLib {
         BleDebugLogger.d(TAG, "Bắt đầu quét tìm xe: " + macAddress);
         bluetoothLeScanner.startScan(Collections.singletonList(filter), settings, autoReconnectCallback);
 
+        final int timeOut = Math.max(BikeBleFreq.getScanRadarDelay(), 10000);
+
         // ⏱️ TIMEOUT: Nếu hết getScanRadarDelay() mà không thấy xe → dừng & thử lại chu
         // kỳ sau
         scanTimeoutRunnable = () -> {
             if (autoReconnectCallback != null && isAutoReconnectEnabled) {
-                BleDebugLogger.d(TAG, "⏱️ Hết thời gian quét (" + BikeBleFreq.getScanRadarDelay()
+                BleDebugLogger.d(TAG, "⏱️ Hết thời gian quét (" + timeOut
                         + "ms), không thấy xe. Lên lịch thử lại...");
                 stopTargetedAutoConnect();
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -378,7 +418,7 @@ public class BikeBleLib {
                 }, BikeBleFreq.getScanRadarDelay());
             }
         };
-        scanTimeoutHandler.postDelayed(scanTimeoutRunnable, BikeBleFreq.getScanRadarDelay());
+        scanTimeoutHandler.postDelayed(scanTimeoutRunnable, timeOut);
     }
 
     public void stopTargetedAutoConnect() {

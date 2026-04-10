@@ -69,6 +69,11 @@ JNIEXPORT jstring JNICALL Java_com_du_dtc_bike_ble_BikeBleLib_getErrorCharacteri
     return get_decrypted_string(env, data, 36);
 }
 
+JNIEXPORT jstring JNICALL Java_com_du_dtc_bike_ble_BikeBleLib_getAuthServiceUuid(JNIEnv* env, jclass clazz) {
+    const unsigned char data[] = {0x6b, 0x6a, 0x39, 0x38, 0x6a, 0x68, 0x6b, 0x6d, 0x77, 0x3c, 0x3c, 0x6a, 0x68, 0x77, 0x6e, 0x6e, 0x6d, 0x6e, 0x77, 0x3b, 0x6b, 0x3f, 0x3c, 0x77, 0x6c, 0x3c, 0x3e, 0x62, 0x62, 0x38, 0x6f, 0x38, 0x3e, 0x3b, 0x3f, 0x3b};
+    return get_decrypted_string(env, data, 36);
+}
+
 // ====================================================================
 // HÀM MÃ HÓA LOG BẢO MẬT (KEY ẨN)
 // ====================================================================
