@@ -7,6 +7,8 @@ public class BikeBleFreq {
     // Trạng thái App: true = đang xem, false = chạy nền
     public static boolean isAppActive = true;
 
+    public static boolean isAllowHistoryLog = true;
+
     // Chu kỳ gửi lệnh Keep-Alive (Đọc RSSI) để xe không ngắt kết nối
     public static int getKeepAliveInterval() {
         return 5000; // 5 giây
