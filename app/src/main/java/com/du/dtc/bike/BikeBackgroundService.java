@@ -140,7 +140,7 @@ public class BikeBackgroundService extends Service {
     }
 
     public void connectToDevice(String macAddress) {
-        updateNotification("Đang quét tìm xe...");
+        updateNotification("Đang kết nối đến " + macAddress);
         // Dùng chế độ Radar ngầm thay vì connect trực tiếp
         bikeBleLib.startTargetedAutoConnect(macAddress, data -> {
             // Callback này dùng để hứng dữ liệu text/chuỗi (như tên xe, số khung)
