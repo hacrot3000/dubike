@@ -303,6 +303,10 @@ public class BikeBleLib {
     public void startScan(final ScanListener listener) {
         if (bluetoothLeScanner == null || !isBluetoothEnabled())
             return;
+
+        // BẢO ĐẢM: Ngừng Radar trước khi quét thủ công để tránh xung đột
+        stopTargetedAutoConnect();
+
         ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
 
         scanCallback = new ScanCallback() {
@@ -318,13 +322,27 @@ public class BikeBleLib {
         };
 
         bluetoothLeScanner.startScan(null, settings, scanCallback);
-        new Handler(Looper.getMainLooper()).postDelayed(this::stopScan, 15000);
+        
+        // Timeout 15s: Ngừng và tự phục hồi Radar nếu cần
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (scanCallback != null) {
+                stopScan();
+                resumeRadarIfNeeded();
+            }
+        }, 15000);
     }
 
     public void stopScan() {
         if (bluetoothLeScanner != null && scanCallback != null) {
             bluetoothLeScanner.stopScan(scanCallback);
             scanCallback = null;
+        }
+    }
+
+    private void resumeRadarIfNeeded() {
+        if (isAutoReconnectEnabled && !isConnected() && lastDeviceAddress != null) {
+            BleDebugLogger.d(TAG, "🔄 Tự phục hồi Radar sau khi quét thủ công...");
+            startTargetedAutoConnect(lastDeviceAddress, lastDataListener);
         }
     }
 
@@ -368,7 +386,10 @@ public class BikeBleLib {
         if (!isBluetoothEnabled() || bluetoothLeScanner == null)
             return;
 
+        // BẢO ĐẢM: Dừng quét thủ công nếu đang chạy
+        stopScan();
         stopTargetedAutoConnect();
+        
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
             bluetoothGatt.close();
@@ -401,7 +422,7 @@ public class BikeBleLib {
         };
 
         // BẮT ĐẦU QUÉT
-        BleDebugLogger.d(TAG, "Bắt đầu quét tìm xe: " + macAddress);
+        BleDebugLogger.d(TAG, "Radar thử kết nối: " + macAddress);
         bluetoothLeScanner.startScan(Collections.singletonList(filter), settings, autoReconnectCallback);
 
         final int timeOut = Math.max(BikeBleFreq.getScanRadarDelay(), 10000);

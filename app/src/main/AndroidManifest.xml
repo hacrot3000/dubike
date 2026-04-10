@@ -16,6 +16,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
+        android:name=".activity.MyBikeApp" 
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="DTC Bike"
@@ -32,6 +33,11 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <activity 
+            android:name=".activity.CrashReportActivity" 
+            android:label="Lỗi ứng dụng"
+            android:exported="false" />
 
         <activity
             android:name=".activity.MainActivity"
