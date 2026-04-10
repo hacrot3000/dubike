@@ -13,6 +13,8 @@ public class MyBikeApp extends Application {
     public void onCreate() {
         super.onCreate();
 
+        com.du.dtc.bike.ble.BikeBleFreq.init(this);
+
         // Giăng bẫy bắt mọi Exception chưa được xử lý trong ứng dụng
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
             // 1. Lấy chi tiết đoạn lỗi (Stack Trace)

@@ -205,6 +205,31 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/warning_data_error"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="12dp"
+        android:backgroundTint="#D32F2F"
+        android:background="@drawable/bg_warning" 
+        android:gravity="center"
+        android:padding="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/action_buttons_row"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚠️ Dữ liệu xe bị lỗi hoặc không tương thích hoàn toàn!\nBấm vào đây để chia sẻ Log cho Dev."
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/action_buttons_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

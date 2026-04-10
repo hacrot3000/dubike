@@ -47,6 +47,7 @@ import com.du.dtc.bike.BikeBackgroundService;
 import android.widget.ImageView;
 import com.du.dtc.bike.BuildConfig;
 import com.du.dtc.bike.ble.BikeBleControl;
+import android.widget.LinearLayout;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -71,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
     private View btnMenu; // Nút |||
     private ImageView btnFunction, btnFind, btnAdvanced, btnHistory;
     private TextView tvLockStatus;
+    private LinearLayout warningDataError;
 
     private static final int PERMISSION_REQUEST_CODE = 123;
 
@@ -145,6 +147,8 @@ public class MainActivity extends AppCompatActivity {
 
         btnHistory.setOnClickListener(v -> btnHistoryClick());
 
+        warningDataError.setOnClickListener(v -> btnWarningDataError());
+
         AlphaAnimation blinkAnimation = new AlphaAnimation(1.0f, 0.0f);
         blinkAnimation.setDuration(500); // 0.5 giây mỗi lần nháy
         blinkAnimation.setInterpolator(new LinearInterpolator());
@@ -153,6 +157,29 @@ public class MainActivity extends AppCompatActivity {
 
         // 3. GỌI HÀM TỰ ĐỘNG KẾT NỐI NGAY KHI MỞ APP
         checkPermissionsAndAutoConnect();
+    }
+
+    private void btnWarningDataError() {
+        // Nếu mất kết nối thì chỉ Share log cũ, không dump được
+        if (bikeBleLib == null || !bikeBleLib.isConnected()) {
+            Toast.makeText(this, "Chưa kết nối Bluetooth, đang xuất log hiện tại...", Toast.LENGTH_SHORT).show();
+            com.du.dtc.bike.log.BleDebugLogger.exportAndShareLogs(MainActivity.this);
+            return;
+        }
+
+        // Hiện hộp thoại khóa màn hình
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                .setTitle("Đang trích xuất cấu trúc xe...")
+                .setMessage(
+                        "Hệ thống đang quét toàn bộ Services ẩn của chiếc xe này. Quá trình này mất khoảng 5-10 giây, vui lòng không tắt màn hình!")
+                .setCancelable(false)
+                .show();
+
+        // Gọi hàm Dump, khi nào quét sạch bách thì mới Share Log và đóng hộp thoại
+        bikeBleLib.dumpAllServices(() -> {
+            dialog.dismiss();
+            com.du.dtc.bike.log.BleDebugLogger.exportAndShareLogs(MainActivity.this);
+        });
     }
 
     private boolean btnMenuLongClick() {
@@ -194,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void btnAdvancedClick() {
-        btnTechInfoClick();
+        startActivity(new Intent(MainActivity.this, AdvancedActivity.class));
     }
 
     private void findBike(View v) {
@@ -221,6 +248,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateFunctionButtonUI(BikeData data) {
+
+        if (data == null) {
+            return;
+        }
+
         String mac = getSavedDeviceMac();
 
         // NẾU CHƯA CÓ MAC: Bắt buộc đè giao diện XML mặc định thành trạng thái "Quét
@@ -329,6 +361,7 @@ public class MainActivity extends AppCompatActivity {
         btnHistory = findViewById(R.id.btn_history);
         tvLabelFunction = findViewById(R.id.tv_label_function);
         tvLockStatus = findViewById(R.id.tv_lock_status);
+        warningDataError = findViewById(R.id.warning_data_error);
 
         blinkAnimation = new AlphaAnimation(1.0f, 0.0f);
         blinkAnimation.setDuration(500);
@@ -577,6 +610,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateUI(BikeData data) {
+        // Kiểm tra cờ báo lỗi từ DataParser
+        if (DataParser.isDataError) {
+            warningDataError.setVisibility(View.VISIBLE);
+        } else {
+            warningDataError.setVisibility(View.GONE);
+        }
+
+        if (data == null) {
+            resetUI();
+            return;
+        }
+
         tvBikeName.setText(data.name);
         tvBikeModel.setText("Dòng xe: " + data.frame);
         tvBikeFw.setText("Phiên bản: " + data.fw);

@@ -1,69 +1,92 @@
 package com.du.dtc.bike.ble;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import com.du.dtc.bike.activity.MainActivity;
 
 public class BikeBleFreq {
 
-    // Trạng thái App: true = đang xem, false = chạy nền
+    public static boolean isOnlyShowDatBike = true;
     public static boolean isAppActive = true;
-
     public static boolean isAllowHistoryLog = true;
 
-    // Chu kỳ gửi lệnh Keep-Alive (Đọc RSSI) để xe không ngắt kết nối
-    public static int getKeepAliveInterval() {
-        return 5000; // 5 giây
+    // Các biến lưu trữ (Đơn vị: Mili-giây)
+    public static int keepAliveInterval = 5000;
+    public static int scanRadarActive = 1000;
+    public static int scanRadarBg = 60000;
+
+    public static int pollActive = 1000;
+    public static int pollDrive = 5000;
+    public static int pollOff = 3600000;
+    public static int pollBg = 60000;
+
+    public static int logDrive = 30000;
+    public static int logPark = 300000;
+    public static int logOff = 3600000;
+    public static int logBg = 60000;
+
+    // Gọi hàm này 1 lần lúc mở App (VD: trong MainActivity hoặc MyBikeApp)
+    public static void init(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("BikeFreqPrefs", Context.MODE_PRIVATE);
+        isAllowHistoryLog = prefs.getBoolean("isAllowHistoryLog", true);
+        isOnlyShowDatBike = prefs.getBoolean("isOnlyShowDatBike", true);
+        keepAliveInterval = prefs.getInt("keepAliveInterval", 5000);
+        scanRadarActive = prefs.getInt("scanRadarActive", 1000);
+        scanRadarBg = prefs.getInt("scanRadarBg", 60000);
+        pollActive = prefs.getInt("pollActive", 1000);
+        pollDrive = prefs.getInt("pollDrive", 5000);
+        pollOff = prefs.getInt("pollOff", 3600000);
+        pollBg = prefs.getInt("pollBg", 60000);
+        logDrive = prefs.getInt("logDrive", 30000);
+        logPark = prefs.getInt("logPark", 300000);
+        logOff = prefs.getInt("logOff", 3600000);
+        logBg = prefs.getInt("logBg", 60000);
     }
 
-    // Thời gian trễ trước khi bật Radar tìm xe lại khi mất kết nối
+    public static int getKeepAliveInterval() {
+        return keepAliveInterval;
+    }
+
     public static int getScanRadarDelay() {
-
-        if (isAppActive) {
-            return 1000;
-        }
-
-        return 60 * 1000; // 60 giây khi chạy nền
+        return isAppActive ? scanRadarActive : scanRadarBg;
     }
 
     public static int getPollingInterval() {
 
-        if (isAppActive) {
-            return 1000;
+        int defaultPool = pollBg;
+
+        if (isAppActive)
+            defaultPool = pollActive;
+
+        else if (!isAllowHistoryLog)
+            defaultPool = pollBg;
+
+        else if (MainActivity.globalBikeData != null) {
+            int state = MainActivity.globalBikeData.pcbState;
+            if (state == BikeData.PCB_STATE_OFF)
+                defaultPool = pollOff;
+            else if (state == BikeData.PCB_STATE_MODE_D || state == BikeData.PCB_STATE_MODE_S)
+                defaultPool = pollDrive;
         }
 
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_OFF) {
-            return 3600000; // 1 tiếng khi xe tắt
-        }
-
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_MODE_D) {
-            return 5000; // 5 giây khi xe chạy
-        }
-
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_MODE_S) {
-            return 5000; // 5 giây khi xe chạy
-        }
-
-        return 60000; // 60 giây khi chạy nền
+        return Math.min(defaultPool, getLogInterval());
     }
 
     public static int getLogInterval() {
+        if (!isAllowHistoryLog)
+            return Integer.MAX_VALUE;
 
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_MODE_D) {
-            return 30 * 1000; // 30 giây khi xe chạy
+        if (MainActivity.globalBikeData != null) {
+            int state = MainActivity.globalBikeData.pcbState;
+            if (state == BikeData.PCB_STATE_MODE_D || state == BikeData.PCB_STATE_MODE_S)
+                return logDrive;
+            if (state == BikeData.PCB_STATE_PARK)
+                return logPark;
+            if (state == BikeData.PCB_STATE_OFF)
+                return logOff;
         }
 
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_MODE_S) {
-            return 30 * 1000; // 30 giây khi xe chạy
-        }
-
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_PARK) {
-            return 5 * 60 * 1000; // 5 phút khi xe tắt
-        }
-
-        if (MainActivity.globalBikeData.pcbState == com.du.dtc.bike.ble.BikeData.PCB_STATE_OFF) {
-            return 3600000; // 1 tiếng khi xe tắt
-        }
-
-        return 60000; // 60 giây khi chạy nền
+        return Integer.MAX_VALUE;
     }
-
 }

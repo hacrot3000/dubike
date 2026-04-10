@@ -2,7 +2,6 @@ package com.du.dtc.bike.ble;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -11,13 +10,9 @@ import com.du.dtc.bike.activity.MainActivity;
 
 public class DataParser {
 
-    /**
-     * Parse dữ liệu binary từ các characteristic nhị phân.
-     * * @param uuid 8 ký tự đầu của UUID characteristic
-     * 
-     * @param bytes mảng byte nhận được
-     * @param data  đối tượng BikeData (Biến Global) để ghi kết quả vào
-     */
+    // Cờ toàn cục báo hiệu có lỗi JSON
+    public static boolean isDataError = true;
+
     public static void parseBinary(String uuid, byte[] bytes, BikeData data) {
         if (bytes == null || bytes.length == 0)
             return;
@@ -26,18 +21,14 @@ public class DataParser {
             ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
 
             switch (uuid) {
-                // ========================================================
-                // 1. DASHBOARD DATA (Tốc độ, Pin, Odo, Nhiệt độ) - 41 bytes
-                // ========================================================
                 case "6d2eb205": {
                     DashboardTelemetry telemetry = DashboardTelemetry.fromBytes(bytes);
                     if (telemetry != null) {
-                        // Cập nhật vào biến Global
                         data.odo = telemetry.odo;
                         data.speed = telemetry.speed;
                         data.current = telemetry.current;
                         data.voltage = telemetry.voltage;
-                        data.soc = telemetry.batteryPercent; // Pin (%)
+                        data.soc = telemetry.batteryPercent;
                         data.kmLeft = telemetry.estimatedRange;
 
                         data.tempBms = telemetry.batteryTemp;
@@ -50,29 +41,17 @@ public class DataParser {
                         triggerStageChange(data.pcbState, telemetry.state);
                         data.pcbState = telemetry.state;
                         data.pcbError = telemetry.errorCode;
-
-                        // BleDebugLogger.d("DataParser", "Dashboard: " + data.speed + " km/h | Pin: " +
-                        // data.soc + "%");
                     }
                     break;
                 }
-
-                // ========================================================
-                // 2. LOCK STATUS (Trạng thái ổ khóa thông minh)
-                // ========================================================
                 case "eec8fd7f": {
                     if (bytes.length >= 1) {
-                        int lockFlag = buf.get(0) & 0xFF; // Byte đầu tiên
+                        int lockFlag = buf.get(0) & 0xFF;
                         updateLockStatus(lockFlag, data);
                     }
                     break;
                 }
-
-                // c8eaf27b = Auth Challenge UUID, không phải data characteristic
-                // → Xử lý riêng trong BikeBleControl.processAuthResponse(), không parse ở đây
-
                 case "c75ebe03": {
-                    // Báo hiệu quẹt thẻ NFC
                     if (bytes.length >= 2) {
                         short val = buf.getShort(0);
                         if (val != 0) {
@@ -83,12 +62,13 @@ public class DataParser {
                 }
 
                 default:
-                    // BleDebugLogger.d("DataParser", "[" + uuid + "] Binary " + bytes.length + "B
-                    // chưa có parser");
+                    BleDebugLogger.d("DataParser MISSING", "[" + uuid + "] " + BleDebugLogger.bytesToHex(bytes));
+                    isDataError = true;
             }
 
         } catch (Exception e) {
-            BleDebugLogger.e("DataParser", "parseBinary lỗi [" + uuid + "]: " + e.getMessage());
+            BleDebugLogger.e("DataParser ERROR", "[" + uuid + "] " + BleDebugLogger.bytesToHex(bytes));
+            isDataError = true;
         }
     }
 
@@ -96,21 +76,23 @@ public class DataParser {
         if (jsonStr == null || jsonStr.isEmpty())
             return;
 
+        JSONObject json;
         try {
-            // BƯỚC 1: Lọc lấy phần JSON chuẩn.
-            // Nếu là gói nhị phân (không có dấu { }), hàm sẽ tự thoát và giữ nguyên dữ liệu
-            // cũ.
             int start = jsonStr.indexOf("{");
             int end = jsonStr.lastIndexOf("}");
             if (start == -1 || end == -1)
                 return;
 
             String cleanJson = jsonStr.substring(start, end + 1);
-            JSONObject json = new JSONObject(cleanJson);
+            json = new JSONObject(cleanJson);
+        } catch (Exception e) {
+            return; // Nếu không phải JSON hợp lệ thì bỏ qua luôn
+        }
 
-            // BƯỚC 2: Phân tích gói PIN & NHIỆT ĐỘ (UUID 84c7be0b)
-            // {"voltage":76.99, "current":3.02, "charge":true, "fet":34.59, "NTCs":[...],
-            // "soc":{...}, "cellVols":[...]}
+        // ========================================================
+        // KHỐI 1: Phân tích gói PIN & NHIỆT ĐỘ (BMS)
+        // ========================================================
+        try {
             if (json.has("voltage")) {
                 data.voltage = json.optDouble("voltage", data.voltage);
                 data.current = json.optDouble("current", data.current);
@@ -120,30 +102,29 @@ public class DataParser {
                 data.tempBalanceReg = json.optDouble("resistor", data.tempBalanceReg);
                 data.bmsError = json.optInt("error", data.bmsError);
 
-                // Sub-object SOC:
-                // {"V":3.34,"I":0.76,"Ah":8.43,"cycles":36.82,"soc":0.58,"absAh":1067.8}
                 if (json.has("soc")) {
-                    JSONObject socObj = json.getJSONObject("soc");
-                    data.soc = socObj.optDouble("soc", 0.0) * 100; // 0.58 -> 58%
-                    data.cycles = socObj.optDouble("cycles", data.cycles);
-                    data.currentAh = socObj.optDouble("Ah", data.currentAh);
-                    data.absAh = socObj.optDouble("absAh", data.absAh);
+                    // FIX: Thử đọc như một Object (Xe mới), nếu lỗi thì đọc như một Double (Xe cũ)
+                    JSONObject socObj = json.optJSONObject("soc");
+                    if (socObj != null) {
+                        data.soc = socObj.optDouble("soc", 0.0) * 100;
+                        data.cycles = socObj.optDouble("cycles", data.cycles);
+                        data.currentAh = socObj.optDouble("Ah", data.currentAh);
+                        data.absAh = socObj.optDouble("absAh", data.absAh);
+                    } else {
+                        // Khắc phục cho xe cũ
+                        data.soc = json.optDouble("soc", 0.0) * 100;
+                    }
                 }
 
-                // THAY THẾ ĐOẠN NTCs CŨ BẰNG ĐOẠN NÀY:
                 if (json.has("NTCs")) {
                     JSONArray ntcs = json.getJSONArray("NTCs");
                     int len = ntcs.length();
                     if (len > 0) {
                         double sumTemp = 0;
-                        // Cộng tổng nhiệt độ các cảm biến
-                        for (int i = 0; i < len; i++) {
+                        for (int i = 0; i < len; i++)
                             sumTemp += ntcs.optDouble(i, 0.0);
-                        }
-                        // Nhiệt độ BMS = Trung bình cộng của các cell NTC (~33.5°C)
                         data.tempBms = sumTemp / len;
 
-                        // Vẫn giữ lại việc gán chi tiết từng pin nếu bạn cần dùng ở đâu đó
                         if (len >= 4) {
                             data.tempPin1 = ntcs.optDouble(0, data.tempPin1);
                             data.tempPin2 = ntcs.optDouble(1, data.tempPin2);
@@ -153,38 +134,37 @@ public class DataParser {
                     }
                 }
             }
+        } catch (Exception e) {
+            isDataError = true;
+            BleDebugLogger.e("DataParser", "Lỗi Parse BMS: " + e.getMessage());
+            BleDebugLogger.e("DataParser", "RAW JSON BMS: " + jsonStr);
+        }
 
-            // BƯỚC 3: Phân tích gói CẤU HÌNH + VẬN HÀNH (UUID 018e6a6f)
-            // {"bikeConfig":{...}, "firmware":{...}, "controller":{...}, "mainPcb":{...}}
-
-            // 3a. Thông tin xe (bikeConfig)
+        // ========================================================
+        // KHỐI 2: Phân tích gói CẤU HÌNH + VẬN HÀNH (PCB)
+        // ========================================================
+        try {
             if (json.has("bikeConfig")) {
                 JSONObject cfg = json.getJSONObject("bikeConfig");
                 data.name = cfg.optString("name", data.name);
                 data.frame = cfg.optString("model", data.frame);
-                data.vin = cfg.optString("frame", data.vin); // Số khung thực tế (VIN)
+                data.vin = cfg.optString("frame", data.vin);
                 data.idleOff = cfg.optBoolean("idleOff", data.idleOff);
             }
 
-            // 3b. Thông tin firmware
             if (json.has("firmware")) {
                 JSONObject fw = json.getJSONObject("firmware");
                 data.fw = fw.optString("version", data.fw);
                 data.fwHash = fw.optString("hash", data.fwHash);
             }
 
-            // 3c. Bộ điều khiển (controller):
-            // {"ecu":0,"motor":0,"adc1":0.85,"adc2":0.85,"phase":0}
             if (json.has("controller")) {
                 JSONObject ctrl = json.getJSONObject("controller");
                 data.adc1 = ctrl.optDouble("adc1", data.adc1);
                 data.adc2 = ctrl.optDouble("adc2", data.adc2);
-                // "motor": giá trị 0 hiện tại, cần debug thêm để xác nhận là nhiệt độ hay mã
-                // trạng thái
                 data.tempMotor = ctrl.optDouble("motor", data.tempMotor);
             }
 
-            // 3d. Bo mạch chính (mainPcb)
             if (json.has("mainPcb")) {
                 JSONObject pcb = json.getJSONObject("mainPcb");
                 data.odo = pcb.optDouble("odo", data.odo);
@@ -200,8 +180,16 @@ public class DataParser {
                 triggerStageChange(data.pcbState, newState);
                 data.pcbState = newState;
             }
+        } catch (Exception e) {
+            isDataError = true;
+            BleDebugLogger.e("DataParser", "Lỗi Parse Config/PCB: " + e.getMessage());
+            BleDebugLogger.e("DataParser", "RAW JSON PCB: " + jsonStr);
+        }
 
-            // BƯỚC 4: Xử lý mảng Cell (cellVols) từ gói BMS
+        // ========================================================
+        // KHỐI 3: Phân tích mảng CELL PIN (CellVols)
+        // ========================================================
+        try {
             if (json.has("cellVols")) {
                 JSONArray cells = json.getJSONArray("cellVols");
                 data.cellVoltages.clear();
@@ -224,9 +212,10 @@ public class DataParser {
                     data.cellDiff = max - min;
                 }
             }
-
         } catch (Exception e) {
-            // Không log lỗi ở đây để tránh làm rác Logcat khi gặp gói nhị phân
+            isDataError = true;
+            BleDebugLogger.e("DataParser", "Lỗi Parse CellVols: " + e.getMessage());
+            BleDebugLogger.e("DataParser", "RAW JSON CELLS: " + jsonStr);
         }
     }
 

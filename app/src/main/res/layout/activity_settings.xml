@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0F1117"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="#161B27"
+        android:paddingHorizontal="16dp">
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_back"
+            android:tint="#FFFFFF" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="Thiết lập hệ thống"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView 
+                android:layout_width="wrap_content" 
+                android:layout_height="wrap_content" 
+                android:text="TỰ ĐỘNG NHẬN DẠNG THIẾT BỊ" 
+                android:textColor="#61AFEF" 
+                android:textSize="13sp" 
+                android:textStyle="bold" 
+                android:layout_marginBottom="12dp" 
+                android:layout_marginTop="8dp"/>
+
+            <RadioGroup
+                android:id="@+id/rg_scan_filter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp">
+
+                <RadioButton
+                    android:id="@+id/rb_filter_datbike"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Chỉ hiện xe DatBike khi quét"
+                    android:textColor="#FFFFFF"
+                    android:buttonTint="#98C379"
+                    android:textSize="15sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/rb_filter_all"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hiện tất cả thiết bị"
+                    android:textColor="#FFFFFF"
+                    android:buttonTint="#98C379"
+                    android:textSize="15sp"/>
+            </RadioGroup>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#2A2F3E" android:layout_marginBottom="16dp"/>
+
+            <TextView 
+                android:layout_width="wrap_content" 
+                android:layout_height="wrap_content" 
+                android:text="CHU KỲ LƯU LỊCH SỬ " 
+                android:textColor="#61AFEF" 
+                android:textSize="13sp" 
+                android:textStyle="bold" 
+                android:layout_marginBottom="12dp" />
+            
+            <Switch
+                android:id="@+id/sw_history"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Bật ghi nhật ký hệ thống"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khi xe sẵn sàng chạy" android:textColor="#FFFFFF" android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khi xe đang ở chế độ D hoặc S, tần suất ghi cao để đảm bảo thông số chính xác." android:textColor="#888EA8" android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cách mỗi" android:textColor="#CCCCCC" android:layout_marginEnd="8dp"/>
+                    <EditText android:id="@+id/edt_log_drive" android:layout_width="80dp" android:layout_height="wrap_content" android:inputType="number" android:textAlignment="center" android:textColor="#98C379" android:textStyle="bold" android:backgroundTint="#3A3F4E"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="giây lưu 1 bản ghi" android:textColor="#CCCCCC" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khi xe đang dừng chờ" android:textColor="#FFFFFF" android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Lúc xe đang ở chế độ P, tần suất không cần cao quá." android:textColor="#888EA8" android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cách mỗi" android:textColor="#CCCCCC" android:layout_marginEnd="8dp"/>
+                    <EditText android:id="@+id/edt_log_park" android:layout_width="80dp" android:layout_height="wrap_content" android:inputType="number" android:textAlignment="center" android:textColor="#98C379" android:textStyle="bold" android:backgroundTint="#3A3F4E"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="giây lưu 1 bản ghi" android:textColor="#CCCCCC" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="24dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khi xe đã tắt máy" android:textColor="#FFFFFF" android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ghi thưa ra để tiết kiệm bộ nhớ điện thoại và pin xe." android:textColor="#888EA8" android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cách mỗi" android:textColor="#CCCCCC" android:layout_marginEnd="8dp"/>
+                    <EditText android:id="@+id/edt_log_off" android:layout_width="80dp" android:layout_height="wrap_content" android:inputType="number" android:textAlignment="center" android:textColor="#98C379" android:textStyle="bold" android:backgroundTint="#3A3F4E"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="phút lưu 1 bản ghi" android:textColor="#CCCCCC" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#2A2F3E" android:layout_marginBottom="16dp"/>
+            
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TẦN SUẤT KẾT NỐI LẤY DỮ LIỆU" android:textColor="#61AFEF" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khi đang mở màn hình App" android:textColor="#FFFFFF" android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Yêu cầu dữ liệu liên tục để thông số cập nhật tức thời." android:textColor="#888EA8" android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cách mỗi" android:textColor="#CCCCCC" android:layout_marginEnd="8dp"/>
+                    <EditText android:id="@+id/edt_poll_active" android:layout_width="80dp" android:layout_height="wrap_content" android:inputType="numberDecimal" android:textAlignment="center" android:textColor="#E5C07B" android:textStyle="bold" android:backgroundTint="#3A3F4E"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="giây quét 1 lần" android:textColor="#CCCCCC" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="24dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Khi vuốt App chạy nền" android:textColor="#FFFFFF" android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Giảm tần suất để điện thoại không bị nóng và tụt pin." android:textColor="#888EA8" android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cách mỗi" android:textColor="#CCCCCC" android:layout_marginEnd="8dp"/>
+                    <EditText android:id="@+id/edt_poll_bg" android:layout_width="80dp" android:layout_height="wrap_content" android:inputType="number" android:textAlignment="center" android:textColor="#E5C07B" android:textStyle="bold" android:backgroundTint="#3A3F4E"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="giây quét 1 lần" android:textColor="#CCCCCC" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#2A2F3E" android:layout_marginBottom="16dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KẾT NỐI NGẦM &amp; CHỐNG RỚT MẠNG" android:textColor="#61AFEF" android:textSize="13sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginBottom="16dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nhịp tim duy trì kết nối (Keep-Alive)" android:textColor="#FFFFFF" android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Gửi tín hiệu đều đặn để bo mạch xe Datbike không tự ngắt Bluetooth." android:textColor="#888EA8" android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cách mỗi" android:textColor="#CCCCCC" android:layout_marginEnd="8dp"/>
+                    <EditText android:id="@+id/edt_keep_alive" android:layout_width="80dp" android:layout_height="wrap_content" android:inputType="number" android:textAlignment="center" android:textColor="#C678DD" android:textStyle="bold" android:backgroundTint="#3A3F4E"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="giây bắn tín hiệu" android:textColor="#CCCCCC" android:layout_marginStart="8dp"/>
+                </LinearLayout>
+            </LinearLayout> -->
+
+        </LinearLayout>
+    </ScrollView>
+
+    <Button
+        android:id="@+id/btn_save"
+        android:layout_width="match_parent"
+        android:layout_height="55dp"
+        android:layout_margin="16dp"
+        android:backgroundTint="#98C379"
+        android:text="LƯU VÀ ÁP DỤNG CẤU HÌNH"
+        android:textColor="#161B27"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+</LinearLayout>

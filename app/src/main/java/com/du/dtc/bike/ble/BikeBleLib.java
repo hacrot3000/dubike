@@ -79,6 +79,26 @@ public class BikeBleLib {
     private final BikeGattCallback gattCallback;
     private boolean isNeedPrintInitLog = true;
 
+    // --- BIẾN PHỤC VỤ DUMP SERVICES ---
+    private class DumpItem {
+        BluetoothGattService service;
+        BluetoothGattCharacteristic characteristic;
+
+        DumpItem(BluetoothGattService s, BluetoothGattCharacteristic c) {
+            this.service = s;
+            this.characteristic = c;
+        }
+    }
+
+    private java.util.Queue<DumpItem> dumpQueue = new java.util.LinkedList<>();
+    private Runnable dumpCompleteCallback;
+    public boolean isDumping = false;
+    private Handler dumpHandler = new Handler(Looper.getMainLooper());
+    private Runnable dumpTimeoutRunnable = () -> {
+        BleDebugLogger.e(TAG, "⏳ Quá thời gian đọc (Timeout), tự động bỏ qua và đọc cái tiếp theo...");
+        readNextDumpCharacteristic();
+    };
+
     public BikeBleLib(Context context) {
         this.context = context;
         BluetoothManager manager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
@@ -227,6 +247,10 @@ public class BikeBleLib {
     }
 
     private void processIncomingData(BluetoothGattCharacteristic characteristic) {
+        if (processDumpData(characteristic)) {
+            return;
+        }
+
         byte[] value = characteristic.getValue();
         if (value != null && value.length > 0) {
             String uuid = characteristic.getUuid().toString().substring(0, 8).toLowerCase();
@@ -322,7 +346,7 @@ public class BikeBleLib {
         };
 
         bluetoothLeScanner.startScan(null, settings, scanCallback);
-        
+
         // Timeout 15s: Ngừng và tự phục hồi Radar nếu cần
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (scanCallback != null) {
@@ -389,7 +413,7 @@ public class BikeBleLib {
         // BẢO ĐẢM: Dừng quét thủ công nếu đang chạy
         stopScan();
         stopTargetedAutoConnect();
-        
+
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
             bluetoothGatt.close();
@@ -456,9 +480,9 @@ public class BikeBleLib {
 
     // Lọc thiết bị quét được (có kèm Gói quảng cáo ScanRecord)
     public boolean isDatBike(ScanResult result) {
-        if (result == null || result.getDevice() == null) {
-            BleDebugLogger.d(TAG, "Không phải xe Datbike (case 5)");
-            return false;
+
+        if (!BikeBleFreq.isOnlyShowDatBike) {
+            return true;
         }
 
         BluetoothDevice device = result.getDevice();
@@ -590,5 +614,103 @@ public class BikeBleLib {
     // Trả về true nếu điện thoại đang duy trì kết nối sóng BLE thành công với xe
     public boolean isConnected() {
         return this.bluetoothGatt != null;
+    }
+
+    // ========================================================================
+    // TÍNH NĂNG: QUÉT VÀ ĐỌC TOÀN BỘ SERVICES (DUMP GATT)
+    // ========================================================================
+    public void dumpAllServices(Runnable onComplete) {
+        if (bluetoothGatt == null) {
+            BleDebugLogger.e(TAG, "Không thể Dump: Chưa kết nối BLE");
+            if (onComplete != null)
+                onComplete.run();
+            return;
+        }
+
+        stopDataPolling(); // Tạm dừng việc lấy dữ liệu bình thường để nhường đường Bluetooth
+        isDumping = true;
+        dumpCompleteCallback = onComplete;
+        dumpQueue.clear();
+
+        BleDebugLogger.i("DUMP", "=== BẮT ĐẦU QUÉT TOÀN BỘ DỊCH VỤ CỦA XE ===");
+
+        for (BluetoothGattService service : bluetoothGatt.getServices()) {
+            BleDebugLogger.logText("DUMP", "📦 Service: " + service.getUuid().toString());
+            for (BluetoothGattCharacteristic charac : service.getCharacteristics()) {
+
+                int props = charac.getProperties();
+                String propStr = ((props & BluetoothGattCharacteristic.PROPERTY_READ) != 0 ? "READ " : "") +
+                        ((props & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0 ? "NOTIFY " : "") +
+                        ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0 ? "WRITE " : "");
+
+                BleDebugLogger.logText("DUMP", "   ↳ Char: " + charac.getUuid().toString() + " | Quyền: " + propStr);
+
+                // NẾU characteristic cho phép ĐỌC (READ) -> Nhét vào hàng đợi kèm theo Service
+                // của nó
+                if ((props & BluetoothGattCharacteristic.PROPERTY_READ) != 0) {
+                    dumpQueue.add(new DumpItem(service, charac)); // <--- ĐÃ SỬA DÒNG NÀY
+                }
+            }
+        }
+
+        BleDebugLogger.i("DUMP", "-> Tìm thấy " + dumpQueue.size() + " mục có thể đọc. Bắt đầu trích xuất...");
+        readNextDumpCharacteristic();
+    }
+
+    private void readNextDumpCharacteristic() {
+        dumpHandler.removeCallbacks(dumpTimeoutRunnable);
+
+        if (dumpQueue.isEmpty()) {
+            BleDebugLogger.i("DUMP", "=== KẾT THÚC TRÍCH XUẤT DỮ LIỆU ===");
+            isDumping = false;
+            startDataPolling(bluetoothGatt); // Mở lại luồng cập nhật dữ liệu bình thường cho UI
+            if (dumpCompleteCallback != null) {
+                dumpHandler.post(dumpCompleteCallback);
+            }
+            return;
+        }
+
+        // ĐÃ SỬA: Lấy DumpItem ra từ hàng đợi
+        DumpItem item = dumpQueue.poll();
+        BluetoothGattCharacteristic charac = item.characteristic;
+        BluetoothGattService service = item.service;
+
+        // In log cho biết đang chuẩn bị đọc cái nào
+        String svcId = service.getUuid().toString().substring(0, 8);
+        String charId = charac.getUuid().toString().substring(0, 8);
+        BleDebugLogger.logText("DUMP", " ⏳ Đang đọc... Service [" + svcId + "] -> Char [" + charId + "]");
+
+        boolean initiated = bluetoothGatt.readCharacteristic(charac);
+
+        if (initiated) {
+            dumpHandler.postDelayed(dumpTimeoutRunnable, 1500);
+        } else {
+            BleDebugLogger.i("DUMP", "   ⚠️ Xe từ chối lệnh đọc: " + charId);
+            dumpHandler.postDelayed(this::readNextDumpCharacteristic, 100);
+        }
+    }
+
+    private boolean processDumpData(BluetoothGattCharacteristic characteristic) {
+        if (isDumping) {
+            dumpHandler.removeCallbacks(dumpTimeoutRunnable); // Hủy timeout vì đã đọc thành công
+            byte[] data = characteristic.getValue();
+
+            String charId = characteristic.getUuid().toString().substring(0, 8);
+
+            if (data != null && data.length > 0) {
+                String hex = BleDebugLogger.bytesToHex(data);
+                String str = new String(data, java.nio.charset.StandardCharsets.UTF_8).replaceAll("[\\x00-\\x1F]", ".");
+
+                BleDebugLogger.logText("DUMP", "   ✅ Đã nhận [" + charId + "]: Hex=" + hex + " | Str=" + str);
+            } else {
+                BleDebugLogger.logText("DUMP", "   ✅ Đã nhận [" + charId + "]: (Dữ liệu rỗng)");
+            }
+
+            // Nghỉ 100ms cho mạng ổn định rồi mới gửi lệnh đọc cái tiếp theo
+            dumpHandler.postDelayed(this::readNextDumpCharacteristic, 100);
+            return true; // 🛑 CHẶN LẠI TẠI ĐÂY
+        }
+
+        return false;
     }
 }

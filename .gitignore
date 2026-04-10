@@ -26,3 +26,9 @@ app/my-release-key.jks
 app/build.gradle
 libraries/Const
 Document
+gradle/
+gradlew
+gradlew.bat
+libraries/a
+libraries/a*
+cleangitlog

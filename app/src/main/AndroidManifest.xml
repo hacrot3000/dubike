@@ -35,11 +35,13 @@
         </provider>
 
         <activity 
+            android:screenOrientation="portrait"
             android:name=".activity.CrashReportActivity" 
             android:label="Lỗi ứng dụng"
             android:exported="false" />
 
         <activity
+            android:screenOrientation="portrait"
             android:name=".activity.MainActivity"
             android:exported="true">
             <intent-filter>
@@ -48,10 +50,27 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".activity.TechInfoActivity" android:label="Thông tin kỹ thuật"/>
-        <activity android:name=".activity.HistoryActivity" android:label="Lịch sử &amp; Biểu đồ"/>
-        <activity android:name=".activity.AuthActivity" android:label="Xác thực thẻ"/>
-        
+        <activity 
+            android:screenOrientation="portrait"
+            android:name=".activity.TechInfoActivity" 
+            android:label="Thông tin kỹ thuật"/>
+        <activity 
+            android:screenOrientation="portrait"
+            android:name=".activity.HistoryActivity" 
+            android:label="Lịch sử &amp; Biểu đồ"/>
+        <activity 
+            android:screenOrientation="portrait"
+            android:name=".activity.AuthActivity" 
+            android:label="Xác thực thẻ"/>
+        <activity 
+            android:screenOrientation="portrait"
+            android:name=".activity.AdvancedActivity" 
+            android:label="Tùy chọn nâng cao"/>
+        <activity 
+            android:screenOrientation="portrait"
+            android:name=".activity.SettingsActivity" 
+            android:label="Cấu hình hệ thống"/>
+
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
