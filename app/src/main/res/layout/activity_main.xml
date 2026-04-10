@@ -310,35 +310,6 @@
             android:gravity="center">
 
             <ImageView
-                android:id="@+id/btn_advanced"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@drawable/advanced"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                android:padding="12dp"
-                app:tint="@color/text_main" />
-
-            <TextView
-                android:id="@+id/tv_label_advanced"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Nâng cao"
-                android:textColor="@color/text_sub"
-                android:textSize="12sp"
-                android:gravity="center" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
                 android:id="@+id/btn_history"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
@@ -355,6 +326,35 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="Lịch sử"
+                android:textColor="@color/text_sub"
+                android:textSize="12sp"
+                android:gravity="center" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/btn_advanced"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/advanced"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="12dp"
+                app:tint="@color/text_main" />
+
+            <TextView
+                android:id="@+id/tv_label_advanced"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Nâng cao"
                 android:textColor="@color/text_sub"
                 android:textSize="12sp"
                 android:gravity="center" />

@@ -622,10 +622,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateUI(BikeData data) {
         // Kiểm tra cờ báo lỗi từ DataParser
-        if (DataParser.isDataError) {
-            warningDataError.setVisibility(View.VISIBLE);
-        } else {
-            warningDataError.setVisibility(View.GONE);
+        if (DataParser.isDataError && bikeBleLib.isConnected()) {
+            warningDataError.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    // Kiểm tra lại xem lỗi có còn không
+                    if (DataParser.isDataError) {
+                        warningDataError.setVisibility(View.VISIBLE);
+                    } else {
+                        warningDataError.setVisibility(View.GONE);
+                    }
+                }
+            }, 3000);
         }
 
         if (data == null) {

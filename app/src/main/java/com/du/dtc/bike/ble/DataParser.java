@@ -283,6 +283,7 @@ public class DataParser {
             }
         } catch (Exception e) {
             BleDebugLogger.e("DataParser", "Lỗi parseDashboard: " + e.getMessage());
+            setError();
         }
     }
 
@@ -302,6 +303,7 @@ public class DataParser {
 
         } catch (Exception e) {
             BleDebugLogger.e("DataParser", "Lỗi parseLockStatus: " + e.getMessage());
+            setError();
         }
     }
 
