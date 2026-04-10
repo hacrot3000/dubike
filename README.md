@@ -45,7 +45,7 @@ Nếu bạn không có khả năng tự build code, bạn có thể tham gia và
 |:---:|:---:|
 | ![Chưa kết nối](html/images/not_connect.jpg) | ![Màn hình chính](html/images/main.jpg) |
 | **Thông số Pin & Kỹ thuật** | **Lịch sử & Biểu đồ** |
-| ![Lịch sử hành trình](html/images/history1.jpg) | ![Lịch sử hành trình](html/images/history2.jpg) |
+| ![Lịch sử hành trình](html/images/history.jpg) | ![Lịch sử hành trình](html/images/history2.jpg) |
 | ![Thông số Pin](html/images/bat.jpg) | ![Thiết lập cá nhân hoá](html/images/settings.jpg) |
 
 ---
