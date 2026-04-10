@@ -435,8 +435,10 @@ public class BikeBleLib {
 
     // Lọc thiết bị quét được (có kèm Gói quảng cáo ScanRecord)
     public boolean isDatBike(ScanResult result) {
-        if (result == null || result.getDevice() == null)
+        if (result == null || result.getDevice() == null) {
+            BleDebugLogger.d(TAG, "Không phải xe Datbike (case 5)");
             return false;
+        }
 
         BluetoothDevice device = result.getDevice();
 
@@ -471,6 +473,8 @@ public class BikeBleLib {
             }
         }
 
+        BleDebugLogger.d(TAG, "Không phải xe Datbike (case 1): " + device.getAddress() + " | " + device.getName());
+
         return false;
     }
 
@@ -480,14 +484,22 @@ public class BikeBleLib {
             return false;
 
         // 1. LỌC RÁC CƠ BẢN (Tai nghe, chuột, máy tính, điện thoại...)
-        if (device.getType() == BluetoothDevice.DEVICE_TYPE_CLASSIC)
+        if (device.getType() == BluetoothDevice.DEVICE_TYPE_CLASSIC) {
+            BleDebugLogger.d(TAG,
+                    "Không phải xe Datbike (case 2): " + device.getAddress() + " | " + device.getName() + " | "
+                            + device.getType());
             return false;
+        }
+
         if (device.getBluetoothClass() != null) {
             int majorClass = device.getBluetoothClass().getMajorDeviceClass();
             if (majorClass == BluetoothClass.Device.Major.AUDIO_VIDEO ||
                     majorClass == BluetoothClass.Device.Major.COMPUTER ||
                     majorClass == BluetoothClass.Device.Major.PHONE ||
                     majorClass == BluetoothClass.Device.Major.WEARABLE) {
+                BleDebugLogger.d(TAG,
+                        "Không phải xe Datbike (case 3): " + device.getAddress() + " | " + device.getName() + " | "
+                                + majorClass);
                 return false;
             }
         }
@@ -523,6 +535,8 @@ public class BikeBleLib {
                 }
             }
         }
+
+        BleDebugLogger.d(TAG, "Không phải xe Datbike (case 4): " + device.getAddress() + " | " + device.getName());
 
         return false;
     }

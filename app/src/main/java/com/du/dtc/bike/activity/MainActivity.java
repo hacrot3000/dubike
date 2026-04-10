@@ -193,11 +193,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void btnAdvancedClick() {
-        if (BuildConfig.ENABLE_DEVELOP_FEATURE) {
-            Toast.makeText(MainActivity.this, "Mở bảng Cài đặt nâng cao", Toast.LENGTH_SHORT).show();
-        } else {
-            btnTechInfoClick();
-        }
+        btnTechInfoClick();
     }
 
     private void findBike(View v) {
@@ -258,13 +254,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onFunctionButtonClick() {
-
-        // Case đặc biệt: môi trường production không có ENABLE_DEVELOP_FEATURE -> chỉ
-        // quét xe
-        if (!BuildConfig.ENABLE_DEVELOP_FEATURE) {
-            checkPermissionsAndShowScanDialog();
-            return;
-        }
 
         // Đọc label hiện tại do updateFunctionButtonUI đã set -> dispatch đúng hành
         // động
@@ -469,15 +458,11 @@ public class MainActivity extends AppCompatActivity {
                 bikeBleLib.stopScan();
         });
 
-        if (bikeBleLib != null && !BuildConfig.ENABLE_DEVELOP_FEATURE) {
-            builder.setNeutralButton("Lưu ý: Chỉ hiện xe đã ghép nối trước đó.", null);
-        }
-
         scanDialog = builder.create();
         scanDialog.show();
 
         // 3. Tùy chỉnh nút Neutral
-        if (bikeBleLib != null && !BuildConfig.ENABLE_DEVELOP_FEATURE) {
+        if (bikeBleLib != null) {
             TextView btnNeutral = (TextView) scanDialog.getButton(AlertDialog.BUTTON_NEUTRAL);
             if (btnNeutral != null) {
                 btnNeutral.setEnabled(false);
@@ -493,9 +478,7 @@ public class MainActivity extends AppCompatActivity {
 
             loadSavedDevicesIntoDialog(); // Đổ dữ liệu Paired devices vào giao diện
 
-            if (bikeBleLib != null && BuildConfig.ENABLE_DEVELOP_FEATURE) {
-                startScanning();
-            }
+            startScanning();
         }, 100);
     }
 
