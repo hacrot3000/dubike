@@ -2,7 +2,10 @@ import os
 
 # 1. Nhóm cho BikeBleControl
 SECRETS = {
-   
+   "getInfoServiceUuid": "d4905f67-8931-4faa-8c61-86ec7490f3c5",
+   "getBeepActiveCharUuid": "350d9a82-b3f3-4213-bdda-6403be495f53",
+   "getBeepScanCharUuid": "87efab0d-9e32-4ab8-8916-ed7cb72d819a",
+   "getCurrentTimeCharUuid": "44e2bde6-9cd5-4159-9d43-a3e3f4e9c737",
 }
 
 # 2. Nhóm cho BikeBleLib

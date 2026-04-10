@@ -56,20 +56,6 @@ public class BikeGattCallback extends BluetoothGattCallback {
     }
 
     @Override
-    public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-        if (status == BluetoothGatt.GATT_SUCCESS) {
-            bleLib.handleCharacteristicReadLogic(characteristic);
-        } else {
-            BleDebugLogger.w(TAG, "❌ Đọc thất bại char " + characteristic.getUuid() + " status=" + status);
-        }
-    }
-
-    @Override
-    public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-        bleLib.handleCharacteristicChangedLogic(characteristic);
-    }
-
-    @Override
     public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             BleDebugLogger.d(TAG, "📤 GỬI thành công lệnh tới: " + characteristic.getUuid());

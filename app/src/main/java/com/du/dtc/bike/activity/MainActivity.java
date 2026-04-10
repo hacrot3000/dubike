@@ -241,21 +241,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // TRƯỜNG HỢP 1: Đã kết nối, nhưng chưa có Token (Chưa từng quẹt thẻ)
-        if (!BikeBleControl.hasSavedToken(this, mac)) {
-            btnFunction.setImageResource(R.drawable.connect);
-            tvLabelFunction.setText("Xác thực");
-            return;
-        }
-
-        // TRƯỜNG HỢP 2: Có token, Đã kết nối, nhưng chưa được cấp quyền (Chưa
-        // canControl)
-        if (bikeBleLib.bikeControl == null || !bikeBleLib.bikeControl.canControl()) {
-            btnFunction.setImageResource(R.drawable.blue);
-            tvLabelFunction.setText("Xác thực");
-            return;
-        }
-
         // TRƯỜNG HỢP 3: Đã kết nối và đã có quyền điều khiển
         if (data.pcbState == BikeData.PCB_STATE_OFF) {
             if (data.isLocked) {
@@ -296,23 +281,6 @@ public class MainActivity extends AppCompatActivity {
                 break;
 
             case "Xác thực":
-                // Có mac nhưng chưa có token -> mở màn xác thực
-                if (BikeBleControl.hasSavedToken(this, mac)) {
-                    // Nếu đã có Token mà UI vẫn báo Xác thực -> Bấm vào để Ép chạy lại lệnh băm SHA
-                    if (bikeBleLib != null && bikeBleLib.bikeControl != null) {
-                        BleDebugLogger.logText("AUTH",
-                                "Đã tìm thấy PIN cũ, người dùng ép xác thực ngầm lại SHA-256...");
-                        bikeBleLib.bikeControl.requestAuthStart();
-                    } else {
-                        Toast.makeText(this, "Đang khởi tạo dịch vụ BLE, vui lòng thử lại sau 1 giây...",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                } else {
-                    // Chưa từng có token -> Mở Activity để quẹt thẻ NFC
-                    startActivity(new Intent(this, AuthActivity.class));
-                }
-                break;
-
             case "Kết nối":
                 // Có token nhưng chưa kết nối -> thử kết nối lại
                 if (mac != null && bikeService != null) {
@@ -322,29 +290,11 @@ public class MainActivity extends AppCompatActivity {
                 break;
 
             case "Mở khóa":
-                // Xe đang khóa (PCB_STATE_OFF + isLocked) -> mở khóa
-                if (bikeBleLib != null && bikeBleLib.bikeControl != null) {
-                    bikeBleLib.bikeControl.safeToggleLock();
-                }
+                Toast.makeText(this, "Tính năng này sẽ có trong tương lai", Toast.LENGTH_SHORT).show();
                 break;
 
             case "Khóa xe":
-                // Xe đang tắt chưa khóa, HOẶC xe đang chạy -> tắt máy rồi khóa
-                if (bikeBleLib != null && bikeBleLib.bikeControl != null) {
-                    BikeData data = globalBikeData;
-                    if (data.pcbState == BikeData.PCB_STATE_OFF) {
-                        bikeBleLib.bikeControl.safeToggleLock();
-                    } else {
-                        Toast.makeText(this, "Đang tắt máy và khóa xe...", Toast.LENGTH_SHORT).show();
-                        bikeBleLib.bikeControl.safeSetPower(false);
-
-                        // Đợi 1s cho xe tắt hẳn nguồn rồi mới gửi lệnh khóa cổ/khóa bánh
-                        new android.os.Handler().postDelayed(() -> {
-                            if (bikeBleLib != null && bikeBleLib.bikeControl != null)
-                                bikeBleLib.bikeControl.safeToggleLock();
-                        }, 1000);
-                    }
-                }
+                Toast.makeText(this, "Tính năng này sẽ có trong tương lai", Toast.LENGTH_SHORT).show();
                 break;
 
             default:
@@ -617,13 +567,6 @@ public class MainActivity extends AppCompatActivity {
         if (bikeService != null) {
             bikeService.connectToDevice(macAddress);
             return;
-        }
-
-        // 2. KHÔI PHỤC SESSION XÁC THỰC (Nếu có)
-        // Sau khi gọi hàm này, bikeBleLib.bikeControl.isAuthorized() sẽ có giá trị từ
-        // bộ nhớ
-        if (bikeBleLib.bikeControl != null) {
-            bikeBleLib.bikeControl.restoreSession(this);
         }
 
         bikeBleLib.setBinaryListener(new BikeBleLib.BinaryListener() {

@@ -31,9 +31,12 @@ public class BikeBleLib {
 
     private static native String getInfoServiceUuid();
 
+    private static native String getAuthServiceUuid();
+
     private static native String getErrorCharacteristicUuid();
 
     private final String DASHBOARD_SVC = getDashboardServiceUuid();
+    private final String AUTH_SVC = getAuthServiceUuid();
     private final String INFO_SVC = getInfoServiceUuid();
 
     private final String CHAR_DASHBOARD = getDashboardCharacteristicUuid();
@@ -116,12 +119,6 @@ public class BikeBleLib {
             public void run() {
                 if (bluetoothGatt != null) {
 
-                    if (bikeControl != null && bikeControl.isAuthenticating) {
-                        BleDebugLogger.d(TAG, "⏳ Đang bận xác thực, tạm dừng lấy Telemetry...");
-                        pollHandler.postDelayed(this, 3000); // Ngủ 3 giây rồi quay lại kiểm tra
-                        return; // Dừng hàm ngay lập tức
-                    }
-
                     // 1. Đọc RSSI (Keep-alive) tại thời điểm 0ms
                     bluetoothGatt.readRemoteRssi();
 
@@ -139,22 +136,6 @@ public class BikeBleLib {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         readSpecificChar(INFO_SVC, CHAR_ERROR);
                     }, 900);
-
-                    // if (BuildConfig.ENABLE_AUTH_FEATURE) {
-                    // // Nhóm làm nhiệm vụ giúp xe giữ kết nối
-                    // // new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    // // readSpecificChar(AUTH_SVC, CHAR_AUTH_TOKEN);
-                    // // }, BikeBleFreq.getKeepAliveInterval());
-
-                    // // new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    // // readSpecificChar(AUTH_SVC, CHAR_ADD_CARD);
-                    // // }, BikeBleFreq.getKeepAliveInterval());
-
-                    // new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    // readSpecificChar(AUTH_SVC, CHAR_AUTH_STATUS);
-                    // }, BikeBleFreq.getKeepAliveInterval());
-                    // // Kết thúc nhóm làm nhiệm vụ giúp xe giữ kết nối
-                    // }
 
                     BleDebugLogger.i(TAG, "Đọc dữ liệu với tần suất " + BikeBleFreq.getPollingInterval());
                     // Lên lịch cho lần chạy TIẾP THEO dựa vào trạng thái App (Active/Background)
@@ -213,51 +194,12 @@ public class BikeBleLib {
         // 1. Đồng bộ giờ
         bikeControl.syncCurrentTime();
 
-        // 2. Kích hoạt Notifications
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            bikeControl.enableNotification(UUID.fromString(DASHBOARD_SVC), UUID.fromString(CHAR_DASHBOARD));
-        }, 100);
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // c8eaf27b: CHAR_AUTH_CHALLENGE — Lắng nghe counter SHA từ xe
-            bikeControl.enableNotification(UUID.fromString(AUTH_SVC), UUID.fromString(CHAR_AUTH_TOKEN));
-        }, 300);
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // c75ebe03: CHAR_AUTH_RESPONSE — Lắng nghe kết quả quẹt thẻ NFC
-            bikeControl.enableNotification(UUID.fromString(AUTH_SVC), UUID.fromString(CHAR_ADD_CARD));
-        }, 500);
-
         // 3. Phục hồi session & Bắt đầu xác thực
         // Phục hồi PIN & Bắt đầu xác thực (Thay thế đoạn code cũ của bạn)
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            bikeControl.restoreSession(context);
-
-            // Nếu xe này đã từng có PIN lưu trong máy -> Tự động xác thực ngầm luôn!
-            if (BikeBleControl.hasSavedToken(context, gatt.getDevice().getAddress())) {
-                BleDebugLogger.logText("AUTH", "Đã tìm thấy PIN cũ, đang xác thực ngầm SHA-256...");
-                bikeControl.requestAuthStart();
-            }
-
             // Bắt đầu vòng lặp đọc Log (Vẫn giữ nguyên)
             startDataPolling(gatt);
         }, 600);
-    }
-
-    public void handleCharacteristicReadLogic(BluetoothGattCharacteristic characteristic) {
-        BleDebugLogger.log(characteristic);
-        if (bikeControl != null) {
-            bikeControl.processAuthResponse(context, characteristic.getUuid(), characteristic.getValue());
-        }
-        processIncomingData(characteristic);
-    }
-
-    public void handleCharacteristicChangedLogic(BluetoothGattCharacteristic characteristic) {
-        BleDebugLogger.log(characteristic);
-        if (bikeControl != null) {
-            bikeControl.processAuthResponse(context, characteristic.getUuid(), characteristic.getValue());
-        }
-        processIncomingData(characteristic);
     }
 
     public void handleRssiRead(int rssi) {
@@ -267,30 +209,6 @@ public class BikeBleLib {
         if (binaryListener != null) {
             byte[] rssiBytes = new byte[] { (byte) rssi };
             binaryListener.onBinaryReceived("rssi_val", rssiBytes);
-        }
-    }
-
-    private void processIncomingData(BluetoothGattCharacteristic characteristic) {
-        byte[] value = characteristic.getValue();
-        if (value != null && value.length > 0) {
-            String uuid = characteristic.getUuid().toString().substring(0, 8).toLowerCase();
-
-            // CHỈ đẩy các gói dữ liệu thuần Binary xuống binaryListener
-            // Auth UUIDs (c8eaf27b, c75ebe03) đi qua processAuthResponse riêng, không xuống
-            // đây
-            if (uuid.equals("6d2eb205") || // Dashboard Data (41 bytes)
-                    uuid.equals("eec8fd7f") || // Smartkey Echo
-                    uuid.equals(CHAR_ERROR.substring(0, 8).toLowerCase())) { // Mã lỗi hệ thống
-
-                if (binaryListener != null) {
-                    binaryListener.onBinaryReceived(uuid, value);
-                }
-            } else {
-                // Các UUID còn lại (Bao gồm BATTERY_LOG, BIKE_LOG, Tên xe, Số khung...)
-                // Chuyển thành String UTF-8 và gửi về DataListener để Parse JSON
-                String textData = new String(value, java.nio.charset.StandardCharsets.UTF_8).trim();
-                sendToUI(textData);
-            }
         }
     }
 
@@ -538,12 +456,6 @@ public class BikeBleLib {
         android.content.SharedPreferences prefs = context.getSharedPreferences("BikeAppPrefs", Context.MODE_PRIVATE);
         String savedMac = prefs.getString("saved_mac_address", "");
         if (!savedMac.isEmpty() && device.getAddress().equalsIgnoreCase(savedMac)) {
-            return true;
-        }
-
-        // 3. FAST PASS 2 (Xe này từng được xác thực thành công mã PIN và lưu lại hệ
-        // thống)
-        if (BikeBleControl.hasSavedToken(context, device.getAddress())) {
             return true;
         }
 
