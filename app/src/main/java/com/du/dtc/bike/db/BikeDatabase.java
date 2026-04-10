@@ -32,7 +32,7 @@ public abstract class BikeDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                             BikeDatabase.class, "bike_database")
-                            .addMigrations(MIGRATION_2_3) // <--- Chèn lệnh Migration vào đây
+                            .addMigrations(MIGRATION_2_3) 
                             .fallbackToDestructiveMigration()
                             .build();
                 }
