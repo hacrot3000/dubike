@@ -11,7 +11,6 @@
         android:orientation="vertical"
         android:padding="0dp">
 
-        <!-- ========== HEADER ========== -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
@@ -48,7 +47,123 @@
                 android:textSize="12sp" />
         </RelativeLayout>
 
-        <!-- ========== CHART 1: NHIỆT ĐỘ ========== -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="12dp"
+            android:background="#1A1F2E"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="🕒 Chọn mốc thời gian"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:orientation="horizontal"
+                android:weightSum="3">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ngày"
+                        android:textColor="#888EA8"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tv_select_date"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="8dp"
+                        android:text="--/--/----"
+                        android:textAlignment="center"
+                        android:textColor="#61AFEF"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Từ giờ"
+                        android:textColor="#888EA8"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tv_select_start_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="8dp"
+                        android:text="00:00"
+                        android:textAlignment="center"
+                        android:textColor="#E5C07B"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Đến giờ"
+                        android:textColor="#888EA8"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tv_select_end_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="8dp"
+                        android:text="Hiện tại"
+                        android:textAlignment="center"
+                        android:textColor="#98C379"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -72,7 +187,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="220dp" />
 
-            <!-- Legend Nhiệt độ — Hàng 1 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -121,7 +235,6 @@
 
             </LinearLayout>
 
-            <!-- Legend Nhiệt độ — Hàng 2 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -171,7 +284,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ========== CHART 2: ĐIỆN / TỐC ĐỘ ========== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -195,7 +307,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="220dp" />
 
-            <!-- Legend Power -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -245,7 +356,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ========== CHART 3: CELL VOLTAGES ========== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -270,7 +380,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="220dp" />
 
-            <!-- Legend Cells -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -312,7 +421,6 @@
                 android:layout_marginTop="4dp"/>
         </LinearLayout>
 
-        <!-- Loading indicator -->
         <ProgressBar
             android:id="@+id/progress_bar"
             android:layout_width="wrap_content"

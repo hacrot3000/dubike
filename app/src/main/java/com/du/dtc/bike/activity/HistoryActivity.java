@@ -1,11 +1,14 @@
 package com.du.dtc.bike.activity;
 
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -22,8 +25,7 @@ import com.github.mikephil.charting.formatter.ValueFormatter;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -34,19 +36,28 @@ public class HistoryActivity extends AppCompatActivity {
 
     // ── Biểu đồ nhiệt độ ──
     private LineChart chartTemp;
-    private boolean[] tempVisible = {true, true, true, true, true, true, true, true};
+    private boolean[] tempVisible = { true, true, true, true, true, true, true, true };
     private LineData tempData;
 
     // ── Biểu đồ điện & tốc độ ──
     private LineChart chartPower;
-    private boolean[] powerVisible = {true, true, true, true};
+    private boolean[] powerVisible = { true, true, true, true };
     private LineData powerData;
 
     // ── Biểu đồ cell ──
     private LineChart chartCells;
 
+    // ── UI Components ──
     private ProgressBar progressBar;
     private TextView tvRecordCount;
+    private TextView tvSelectDate, tvSelectStartTime, tvSelectEndTime;
+
+    // ── Time Filter Variables ──
+    private Calendar filterDate = Calendar.getInstance(); // Ngày đang chọn (Mặc định: Hôm nay)
+    private Integer startHour = null, startMinute = null;
+    private Integer endHour = null, endMinute = null;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+    private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -65,9 +76,8 @@ public class HistoryActivity extends AppCompatActivity {
             "BalReg", "FET", "Pin1", "Pin2", "Pin3", "Pin4", "Motor", "Controller"
     };
 
-    // Legend IDs for temp chart
+    // Legend IDs
     private int[] tempLegendIds;
-    // Legend IDs for power chart
     private int[] powerLegendIds;
 
     @Override
@@ -75,7 +85,6 @@ public class HistoryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_history);
 
-        // Back button
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         progressBar = findViewById(R.id.progress_bar);
@@ -85,41 +94,208 @@ public class HistoryActivity extends AppCompatActivity {
         chartPower = findViewById(R.id.chart_power);
         chartCells = findViewById(R.id.chart_cells);
 
+        // Nút chọn thời gian
+        tvSelectDate = findViewById(R.id.tv_select_date);
+        tvSelectStartTime = findViewById(R.id.tv_select_start_time);
+        tvSelectEndTime = findViewById(R.id.tv_select_end_time);
+
         setupChartAppearance(chartTemp, "°C");
         setupChartAppearance(chartPower, "");
         setupChartAppearance(chartCells, "V");
 
-        // Wire up temp legend toggles
-        tempLegendIds = new int[]{
+        setupLegends();
+        setupTimePickers();
+        updateTimeFilterUI();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Luôn reload lại data mỗi lần Activity được đưa lên màn hình
+        loadFromDatabase();
+    }
+
+    // ─────────────────────────────────────────────
+    // Logic Bộ lọc Thời gian (Date/Time Pickers)
+    // ─────────────────────────────────────────────
+    private void setupTimePickers() {
+        tvSelectDate.setOnClickListener(v -> {
+            DatePickerDialog dpd = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+                filterDate.set(year, month, dayOfMonth);
+                updateTimeFilterUI();
+                loadFromDatabase();
+            }, filterDate.get(Calendar.YEAR), filterDate.get(Calendar.MONTH), filterDate.get(Calendar.DAY_OF_MONTH));
+            dpd.getDatePicker().setMaxDate(System.currentTimeMillis()); // Không cho chọn tương lai
+            dpd.show();
+        });
+
+        tvSelectStartTime.setOnClickListener(v -> {
+            int h = startHour != null ? startHour : 0;
+            int m = startMinute != null ? startMinute : 0;
+            TimePickerDialog tpd = new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+                startHour = hourOfDay;
+                startMinute = minute;
+                validateAndApplyTimeFilter();
+            }, h, m, true);
+            tpd.show();
+        });
+
+        tvSelectEndTime.setOnClickListener(v -> {
+            Calendar now = Calendar.getInstance();
+            int h = endHour != null ? endHour : now.get(Calendar.HOUR_OF_DAY);
+            int m = endMinute != null ? endMinute : now.get(Calendar.MINUTE);
+            TimePickerDialog tpd = new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+                endHour = hourOfDay;
+                endMinute = minute;
+                validateAndApplyTimeFilter();
+            }, h, m, true);
+            tpd.show();
+        });
+    }
+
+    private void validateAndApplyTimeFilter() {
+        Calendar now = Calendar.getInstance();
+        boolean isToday = filterDate.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                filterDate.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR);
+
+        // Chặn chọn giờ bắt đầu trong tương lai (nếu là hôm nay)
+        if (isToday && startHour != null) {
+            if (startHour > now.get(Calendar.HOUR_OF_DAY)
+                    || (startHour == now.get(Calendar.HOUR_OF_DAY) && startMinute > now.get(Calendar.MINUTE))) {
+                Toast.makeText(this, "Giờ bắt đầu không được lớn hơn hiện tại", Toast.LENGTH_SHORT).show();
+                startHour = now.get(Calendar.HOUR_OF_DAY);
+                startMinute = now.get(Calendar.MINUTE);
+            }
+        }
+
+        // Chặn chọn giờ kết thúc trong tương lai (nếu là hôm nay)
+        if (isToday && endHour != null) {
+            if (endHour > now.get(Calendar.HOUR_OF_DAY)
+                    || (endHour == now.get(Calendar.HOUR_OF_DAY) && endMinute > now.get(Calendar.MINUTE))) {
+                Toast.makeText(this, "Giờ kết thúc không được lớn hơn hiện tại", Toast.LENGTH_SHORT).show();
+                endHour = now.get(Calendar.HOUR_OF_DAY);
+                endMinute = now.get(Calendar.MINUTE);
+            }
+        }
+
+        // Chặn giờ kết thúc nhỏ hơn giờ bắt đầu
+        if (startHour != null && endHour != null) {
+            int startTotalMins = startHour * 60 + startMinute;
+            int endTotalMins = endHour * 60 + endMinute;
+            if (endTotalMins < startTotalMins) {
+                Toast.makeText(this, "Giờ kết thúc phải sau giờ bắt đầu", Toast.LENGTH_SHORT).show();
+                endHour = startHour;
+                endMinute = startMinute;
+            }
+        }
+
+        updateTimeFilterUI();
+        loadFromDatabase();
+    }
+
+    private void updateTimeFilterUI() {
+        tvSelectDate.setText(dateFormat.format(filterDate.getTime()));
+
+        if (startHour == null) {
+            tvSelectStartTime.setText("00:00");
+        } else {
+            tvSelectStartTime.setText(String.format(Locale.getDefault(), "%02d:%02d", startHour, startMinute));
+        }
+
+        if (endHour == null) {
+            tvSelectEndTime.setText("Hiện tại");
+        } else {
+            tvSelectEndTime.setText(String.format(Locale.getDefault(), "%02d:%02d", endHour, endMinute));
+        }
+    }
+
+    // Tính toán mốc thời gian dạng ms để query Database
+    private long[] getFilterTimestamps() {
+        Calendar cStart = (Calendar) filterDate.clone();
+        cStart.set(Calendar.HOUR_OF_DAY, startHour != null ? startHour : 0);
+        cStart.set(Calendar.MINUTE, startMinute != null ? startMinute : 0);
+        cStart.set(Calendar.SECOND, 0);
+
+        Calendar cEnd = (Calendar) filterDate.clone();
+        if (endHour != null) {
+            cEnd.set(Calendar.HOUR_OF_DAY, endHour);
+            cEnd.set(Calendar.MINUTE, endMinute);
+            cEnd.set(Calendar.SECOND, 59);
+        } else {
+            Calendar now = Calendar.getInstance();
+            boolean isToday = filterDate.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                    filterDate.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR);
+            if (isToday) {
+                cEnd = now; // Mặc định giờ hiện tại
+            } else {
+                cEnd.set(Calendar.HOUR_OF_DAY, 23);
+                cEnd.set(Calendar.MINUTE, 59);
+                cEnd.set(Calendar.SECOND, 59);
+            }
+        }
+
+        return new long[] { cStart.getTimeInMillis(), cEnd.getTimeInMillis() };
+    }
+
+    // ─────────────────────────────────────────────
+    // Load dữ liệu từ Room DB theo mốc thời gian
+    // ─────────────────────────────────────────────
+    private void loadFromDatabase() {
+        progressBar.setVisibility(View.VISIBLE);
+        long[] ts = getFilterTimestamps();
+        long startTs = ts[0];
+        long endTs = ts[1];
+
+        executor.execute(() -> {
+            // LƯU Ý: Yêu cầu cập nhật BikeLogDao thêm hàm getLogsByTimeRange (OrderBy ASC)
+            List<BikeLogEntity> logs = BikeDatabase.getDatabase(this)
+                    .bikeLogDao()
+                    .getLogsByTimeRange(startTs, endTs);
+
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+                tvRecordCount.setText(logs.size() + " bản ghi");
+
+                if (logs.isEmpty()) {
+                    chartTemp.clear();
+                    chartPower.clear();
+                    chartCells.clear();
+                    return;
+                }
+
+                buildTempChart(logs);
+                buildPowerChart(logs);
+                buildCellChart(logs);
+            });
+        });
+    }
+
+    // ─────────────────────────────────────────────
+    // UI Setups & Builders (Giữ nguyên logic cũ)
+    // ─────────────────────────────────────────────
+    private void setupLegends() {
+        tempLegendIds = new int[] {
                 R.id.legend_balreg, R.id.legend_fet, R.id.legend_pin1, R.id.legend_pin2,
                 R.id.legend_pin3, R.id.legend_pin4, R.id.legend_motor, R.id.legend_ctrl
         };
         for (int i = 0; i < tempLegendIds.length; i++) {
             final int idx = i;
             LinearLayout legend = findViewById(tempLegendIds[i]);
-            if (legend != null) {
+            if (legend != null)
                 legend.setOnClickListener(v -> toggleTempSeries(idx));
-            }
         }
 
-        // Wire up power legend toggles
-        powerLegendIds = new int[]{
+        powerLegendIds = new int[] {
                 R.id.legend_voltage, R.id.legend_current, R.id.legend_speed, R.id.legend_soc
         };
         for (int i = 0; i < powerLegendIds.length; i++) {
             final int idx = i;
             LinearLayout legend = findViewById(powerLegendIds[i]);
-            if (legend != null) {
+            if (legend != null)
                 legend.setOnClickListener(v -> togglePowerSeries(idx));
-            }
         }
-
-        loadFromDatabase();
     }
 
-    // ─────────────────────────────────────────────
-    //  Cấu hình giao diện chung cho mọi LineChart
-    // ─────────────────────────────────────────────
     private void setupChartAppearance(LineChart chart, String yUnit) {
         chart.setBackgroundColor(Color.parseColor("#1A1F2E"));
         chart.getDescription().setEnabled(false);
@@ -129,10 +305,9 @@ public class HistoryActivity extends AppCompatActivity {
         chart.setPinchZoom(true);
         chart.setDoubleTapToZoomEnabled(true);
         chart.setHighlightPerTapEnabled(true);
-        chart.setNoDataText("Chưa có dữ liệu");
+        chart.setNoDataText("Chưa có dữ liệu trong khung giờ này");
         chart.setNoDataTextColor(Color.parseColor("#888EA8"));
 
-        // X-Axis: hiển thị dưới, là mốc thời gian
         XAxis xAxis = chart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setTextColor(Color.parseColor("#888EA8"));
@@ -143,13 +318,13 @@ public class HistoryActivity extends AppCompatActivity {
         xAxis.setGranularity(1f);
         xAxis.setValueFormatter(new ValueFormatter() {
             private final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
             @Override
             public String getFormattedValue(float value) {
                 return sdf.format(new Date((long) value));
             }
         });
 
-        // Y-Axis trái
         YAxis left = chart.getAxisLeft();
         left.setTextColor(Color.parseColor("#888EA8"));
         left.setTextSize(9f);
@@ -165,43 +340,14 @@ public class HistoryActivity extends AppCompatActivity {
             });
         }
 
-        // Y-Axis phải: tắt
         chart.getAxisRight().setEnabled(false);
     }
 
-    // ─────────────────────────────────────────────
-    //  Load dữ liệu từ Room DB (background thread)
-    // ─────────────────────────────────────────────
-    private void loadFromDatabase() {
-        executor.execute(() -> {
-            List<BikeLogEntity> logs = BikeDatabase.getDatabase(this)
-                    .bikeLogDao()
-                    .getRecentLogs();
-
-            // Đảo thứ tự: Room trả về DESC, ta cần ASC theo thời gian
-            Collections.reverse(logs);
-
-            runOnUiThread(() -> {
-                progressBar.setVisibility(View.GONE);
-                tvRecordCount.setText(logs.size() + " bản ghi");
-
-                if (logs.isEmpty()) return;
-
-                buildTempChart(logs);
-                buildPowerChart(logs);
-                buildCellChart(logs);
-            });
-        });
-    }
-
-    // ─────────────────────────────────────────────
-    //  BIỂU ĐỒ 1: Nhiệt độ
-    // ─────────────────────────────────────────────
     private void buildTempChart(List<BikeLogEntity> logs) {
-        // 8 series: BalReg, FET, Pin1-4, Motor, Controller
         @SuppressWarnings("unchecked")
         List<Entry>[] series = new List[8];
-        for (int i = 0; i < 8; i++) series[i] = new ArrayList<>();
+        for (int i = 0; i < 8; i++)
+            series[i] = new ArrayList<>();
 
         for (BikeLogEntity e : logs) {
             float x = e.timestamp;
@@ -218,6 +364,7 @@ public class HistoryActivity extends AppCompatActivity {
         List<LineDataSet> datasets = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
             LineDataSet ds = makeLineDataSet(series[i], TEMP_LABELS[i], TEMP_COLORS[i]);
+            ds.setVisible(tempVisible[i]); // Apply current visibility state
             datasets.add(ds);
         }
 
@@ -226,9 +373,6 @@ public class HistoryActivity extends AppCompatActivity {
         chartTemp.invalidate();
     }
 
-    // ─────────────────────────────────────────────
-    //  BIỂU ĐỒ 2: Điện áp / Dòng điện / Tốc độ / SOC
-    // ─────────────────────────────────────────────
     private void buildPowerChart(List<BikeLogEntity> logs) {
         List<Entry> voltageEntries = new ArrayList<>();
         List<Entry> currentEntries = new ArrayList<>();
@@ -237,42 +381,45 @@ public class HistoryActivity extends AppCompatActivity {
 
         for (BikeLogEntity e : logs) {
             float x = e.timestamp;
-            // Điện áp: 70-84V
             voltageEntries.add(new Entry(x, (float) e.voltage));
-            // Dòng: -150 đến 50A
             currentEntries.add(new Entry(x, (float) e.current));
-            // Tốc độ: 0-100 km/h
             speedEntries.add(new Entry(x, (float) e.speed));
-            // SOC: 0-100 %
             socEntries.add(new Entry(x, (float) e.soc));
         }
 
         LineDataSet dsVoltage = makeLineDataSet(voltageEntries, "Điện áp (V)", Color.parseColor("#61AFEF"));
+        dsVoltage.setVisible(powerVisible[0]);
+
         LineDataSet dsCurrent = makeLineDataSet(currentEntries, "Dòng (A)", Color.parseColor("#E5C07B"));
+        dsCurrent.setVisible(powerVisible[1]);
+
         LineDataSet dsSpeed = makeLineDataSet(speedEntries, "Tốc độ (km/h)", Color.parseColor("#98C379"));
+        dsSpeed.setVisible(powerVisible[2]);
+
         LineDataSet dsSoc = makeLineDataSet(socEntries, "SOC (%)", Color.parseColor("#56B6C2"));
+        dsSoc.setVisible(powerVisible[3]);
 
         powerData = new LineData(dsVoltage, dsCurrent, dsSpeed, dsSoc);
         chartPower.setData(powerData);
         chartPower.invalidate();
     }
 
-    // ─────────────────────────────────────────────
-    //  BIỂU ĐỒ 3: Cell Voltages — Vmin, Vmax, Diff
-    // ─────────────────────────────────────────────
     private void buildCellChart(List<BikeLogEntity> logs) {
         List<Entry> maxEntries = new ArrayList<>();
         List<Entry> minEntries = new ArrayList<>();
         List<Entry> diffEntries = new ArrayList<>();
 
         for (BikeLogEntity e : logs) {
-            if (e.cellVoltages == null || e.cellVoltages.isEmpty()) continue;
+            if (e.cellVoltages == null || e.cellVoltages.isEmpty())
+                continue;
             float x = e.timestamp;
 
             double min = Double.MAX_VALUE, max = Double.MIN_VALUE;
             for (double v : e.cellVoltages) {
-                if (v < min) min = v;
-                if (v > max) max = v;
+                if (v < min)
+                    min = v;
+                if (v > max)
+                    max = v;
             }
             double diff = max - min;
 
@@ -282,20 +429,16 @@ public class HistoryActivity extends AppCompatActivity {
         }
 
         if (maxEntries.isEmpty()) {
-            chartCells.setNoDataText("Không có dữ liệu cell");
-            chartCells.invalidate();
+            chartCells.clear();
             return;
         }
 
-        // Vmax — xanh lá
         LineDataSet dsMax = makeLineDataSet(maxEntries, "Vmax", Color.parseColor("#98C379"));
         dsMax.setLineWidth(1.8f);
 
-        // Vmin — đỏ
         LineDataSet dsMin = makeLineDataSet(minEntries, "Vmin", Color.parseColor("#FF6B6B"));
         dsMin.setLineWidth(1.8f);
 
-        // Diff — vàng, tô mờ dưới đường
         LineDataSet dsDiff = makeLineDataSet(diffEntries, "Lệch (Diff)", Color.parseColor("#E5C07B"));
         dsDiff.setLineWidth(2f);
         dsDiff.setFillColor(Color.parseColor("#40E5C07B"));
@@ -307,9 +450,6 @@ public class HistoryActivity extends AppCompatActivity {
         chartCells.invalidate();
     }
 
-    // ─────────────────────────────────────────────
-    //  Helper: Tạo LineDataSet với style nhất quán
-    // ─────────────────────────────────────────────
     private LineDataSet makeLineDataSet(List<Entry> entries, String label, int color) {
         LineDataSet ds = new LineDataSet(entries, label);
         ds.setColor(color);
@@ -322,38 +462,31 @@ public class HistoryActivity extends AppCompatActivity {
         return ds;
     }
 
-    // ─────────────────────────────────────────────
-    //  Toggle series bật/tắt — Biểu đồ Nhiệt độ
-    // ─────────────────────────────────────────────
     private void toggleTempSeries(int index) {
-        if (tempData == null) return;
+        if (tempData == null)
+            return;
         tempVisible[index] = !tempVisible[index];
         LineDataSet ds = (LineDataSet) tempData.getDataSetByIndex(index);
-        if (ds != null) {
+        if (ds != null)
             ds.setVisible(tempVisible[index]);
-        }
-        // Dim legend icon
+
         LinearLayout legend = findViewById(tempLegendIds[index]);
-        if (legend != null) {
+        if (legend != null)
             legend.setAlpha(tempVisible[index] ? 1f : 0.35f);
-        }
         chartTemp.invalidate();
     }
 
-    // ─────────────────────────────────────────────
-    //  Toggle series bật/tắt — Biểu đồ Điện & Tốc
-    // ─────────────────────────────────────────────
     private void togglePowerSeries(int index) {
-        if (powerData == null) return;
+        if (powerData == null)
+            return;
         powerVisible[index] = !powerVisible[index];
         LineDataSet ds = (LineDataSet) powerData.getDataSetByIndex(index);
-        if (ds != null) {
+        if (ds != null)
             ds.setVisible(powerVisible[index]);
-        }
+
         LinearLayout legend = findViewById(powerLegendIds[index]);
-        if (legend != null) {
+        if (legend != null)
             legend.setAlpha(powerVisible[index] ? 1f : 0.35f);
-        }
         chartPower.invalidate();
     }
 

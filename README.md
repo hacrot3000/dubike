@@ -39,5 +39,13 @@ Nếu bạn không có khả năng tự build code, bạn có thể tham gia và
     * Tải và cập nhật ứng dụng từ Google Play Store tại đường dẫn: [https://play.google.com/apps/internaltest/4701635252669113712](https://play.google.com/apps/internaltest/4701635252669113712).
     * Hoặc tải file [APK trực tiếp từ website](https://www.chuongduong.net/link/17057) mà không cần đăng ký.
 
+## 📸 Ảnh chụp màn hình
+
+| Chưa kết nối | Màn hình chính |
+|:---:|:---:|
+| ![Chưa kết nối](html/images/not_connect.jpg) | ![Màn hình chính](html/images/main.jpg) |
+| **Thông số Pin & Kỹ thuật** | **Lịch sử & Biểu đồ** |
+| ![Thông số Pin](html/images/bat.jpg) | ![Lịch sử hành trình](html/images/history.jpg) |
+
 ---
 *Phát triển bởi Dương (DTC).*

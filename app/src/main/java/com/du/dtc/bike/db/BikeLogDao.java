@@ -10,9 +10,8 @@ public interface BikeLogDao {
     @Insert
     void insertLog(BikeLogEntity log);
 
-    // Lấy 500 bản ghi gần nhất (ORDER DESC để Room trả về nhanh, Activity sẽ reverse)
-    @Query("SELECT * FROM bike_logs ORDER BY timestamp DESC LIMIT 500")
-    List<BikeLogEntity> getRecentLogs();
+    @Query("SELECT * FROM bike_logs WHERE timestamp >= :startTs AND timestamp <= :endTs ORDER BY timestamp ASC")
+    List<BikeLogEntity> getLogsByTimeRange(long startTs, long endTs);
 
     // Lấy theo khoảng thời gian (ms)
     @Query("SELECT * FROM bike_logs WHERE timestamp >= :fromMs ORDER BY timestamp ASC")
