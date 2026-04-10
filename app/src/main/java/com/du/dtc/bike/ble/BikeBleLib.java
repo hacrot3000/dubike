@@ -29,29 +29,17 @@ public class BikeBleLib {
 
     private static native String getDashboardCharacteristicUuid();
 
-    private static native String getAuthServiceUuid();
-
-    private static native String getAuthenticationCharacteristicUuid();
-
-    private static native String getAddCardCharacteristicUuid();
-
-    private static native String getAuthorizationCharacteristicUuid();
-
     private static native String getInfoServiceUuid();
 
     private static native String getErrorCharacteristicUuid();
 
     private final String DASHBOARD_SVC = getDashboardServiceUuid();
-    private final String AUTH_SVC = getAuthServiceUuid();
     private final String INFO_SVC = getInfoServiceUuid();
 
     private final String CHAR_DASHBOARD = getDashboardCharacteristicUuid();
-    private final String CHAR_AUTH_TOKEN = getAuthenticationCharacteristicUuid(); // c8eaf27b (Challenge)
-    private final String CHAR_ADD_CARD = getAddCardCharacteristicUuid(); // c75ebe03 (NFC Response)
     private final String CHAR_BATTERY_LOG = getBatteryLogCharUuid();
     private final String CHAR_BIKE_LOG = getBikeLogCharUuid();
     private final String CHAR_ERROR = getErrorCharacteristicUuid();
-    private final String CHAR_AUTH_STATUS = getAuthorizationCharacteristicUuid();
 
     private int lastRssi = -100;
 
@@ -152,21 +140,21 @@ public class BikeBleLib {
                         readSpecificChar(INFO_SVC, CHAR_ERROR);
                     }, 900);
 
-                    if (BuildConfig.ENABLE_AUTH_FEATURE) {
-                        // Nhóm làm nhiệm vụ giúp xe giữ kết nối
-                        // new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        // readSpecificChar(AUTH_SVC, CHAR_AUTH_TOKEN);
-                        // }, BikeBleFreq.getKeepAliveInterval());
+                    // if (BuildConfig.ENABLE_AUTH_FEATURE) {
+                    // // Nhóm làm nhiệm vụ giúp xe giữ kết nối
+                    // // new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    // // readSpecificChar(AUTH_SVC, CHAR_AUTH_TOKEN);
+                    // // }, BikeBleFreq.getKeepAliveInterval());
 
-                        // new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        // readSpecificChar(AUTH_SVC, CHAR_ADD_CARD);
-                        // }, BikeBleFreq.getKeepAliveInterval());
+                    // // new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    // // readSpecificChar(AUTH_SVC, CHAR_ADD_CARD);
+                    // // }, BikeBleFreq.getKeepAliveInterval());
 
-                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            readSpecificChar(AUTH_SVC, CHAR_AUTH_STATUS);
-                        }, BikeBleFreq.getKeepAliveInterval());
-                        // Kết thúc nhóm làm nhiệm vụ giúp xe giữ kết nối
-                    }
+                    // new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    // readSpecificChar(AUTH_SVC, CHAR_AUTH_STATUS);
+                    // }, BikeBleFreq.getKeepAliveInterval());
+                    // // Kết thúc nhóm làm nhiệm vụ giúp xe giữ kết nối
+                    // }
 
                     BleDebugLogger.i(TAG, "Đọc dữ liệu với tần suất " + BikeBleFreq.getPollingInterval());
                     // Lên lịch cho lần chạy TIẾP THEO dựa vào trạng thái App (Active/Background)
@@ -460,10 +448,12 @@ public class BikeBleLib {
         BleDebugLogger.d(TAG, "Bắt đầu quét tìm xe: " + macAddress);
         bluetoothLeScanner.startScan(Collections.singletonList(filter), settings, autoReconnectCallback);
 
-        // ⏱️ TIMEOUT: Nếu hết getScanRadarDelay() mà không thấy xe → dừng & thử lại chu kỳ sau
+        // ⏱️ TIMEOUT: Nếu hết getScanRadarDelay() mà không thấy xe → dừng & thử lại chu
+        // kỳ sau
         scanTimeoutRunnable = () -> {
             if (autoReconnectCallback != null && isAutoReconnectEnabled) {
-                BleDebugLogger.d(TAG, "⏱️ Hết thời gian quét (" + BikeBleFreq.getScanRadarDelay() + "ms), không thấy xe. Lên lịch thử lại...");
+                BleDebugLogger.d(TAG, "⏱️ Hết thời gian quét (" + BikeBleFreq.getScanRadarDelay()
+                        + "ms), không thấy xe. Lên lịch thử lại...");
                 stopTargetedAutoConnect();
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     startTargetedAutoConnect(macAddress, listener);
@@ -489,7 +479,7 @@ public class BikeBleLib {
     public boolean isDatBike(ScanResult result) {
         if (result == null || result.getDevice() == null)
             return false;
-        
+
         BluetoothDevice device = result.getDevice();
 
         // 1. Dùng chung lưới lọc cơ bản (Tên, MAC đã lưu, Class)
@@ -506,7 +496,8 @@ public class BikeBleLib {
                     android.os.ParcelUuid.fromString(INFO_SVC)));
             for (android.os.ParcelUuid uuid : scanRecord.getServiceUuids()) {
                 if (targetUuids.contains(uuid)) {
-                    BleDebugLogger.d(TAG, "🔍 Bắt được xe Datbike qua UUID từ ScanRecord: " + uuid + " | " + device.getAddress());
+                    BleDebugLogger.d(TAG,
+                            "🔍 Bắt được xe Datbike qua UUID từ ScanRecord: " + uuid + " | " + device.getAddress());
                     return true;
                 }
             }
@@ -550,7 +541,8 @@ public class BikeBleLib {
             return true;
         }
 
-        // 3. FAST PASS 2 (Xe này từng được xác thực thành công mã PIN và lưu lại hệ thống)
+        // 3. FAST PASS 2 (Xe này từng được xác thực thành công mã PIN và lưu lại hệ
+        // thống)
         if (BikeBleControl.hasSavedToken(context, device.getAddress())) {
             return true;
         }
@@ -566,7 +558,8 @@ public class BikeBleLib {
         }
 
         // 5. CACHED UUIDs (Tuyệt chiêu cuối với xe đã Bonded sẵn từ trước)
-        // Hệ điều hành Android có thể lén cache lại quảng cáo UUID của xe dù hiện tại không nằm trong vùng quét
+        // Hệ điều hành Android có thể lén cache lại quảng cáo UUID của xe dù hiện tại
+        // không nằm trong vùng quét
         if (device.getUuids() != null) {
             Set<android.os.ParcelUuid> targetUuids = new HashSet<>(Arrays.asList(
                     android.os.ParcelUuid.fromString(DASHBOARD_SVC),
