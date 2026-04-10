@@ -35,7 +35,9 @@ Dành cho các nhà phát triển muốn tự đóng gói ứng dụng:
 Nếu bạn không có khả năng tự build code, bạn có thể tham gia vào danh sách thử nghiệm nội bộ:
 
 1.  **Đăng ký:** Các bác vui lòng gửi email cho tác giả qua tin nhắn tại Facebook: [https://www.facebook.com/hacrot3000](https://www.facebook.com/hacrot3000). Mình sẽ add email của các bác vào danh sách test app chính thức.
-2.  **Tải ứng dụng:** Sau khi nhận được thông báo đã được thêm vào danh sách, các bác có thể tải và cập nhật ứng dụng trực tiếp từ Google Play Store tại đường dẫn: [https://play.google.com/apps/internaltest/4701635252669113712](https://play.google.com/apps/internaltest/4701635252669113712).
+2.  **Tải ứng dụng:** Sau khi nhận được thông báo đã được thêm vào danh sách, các bác có thể:
+    * Tải và cập nhật ứng dụng từ Google Play Store tại đường dẫn: [https://play.google.com/apps/internaltest/4701635252669113712](https://play.google.com/apps/internaltest/4701635252669113712).
+    * Hoặc tải file [APK trực tiếp từ website](https://www.chuongduong.net/link/17057) mà không cần đăng ký.
 
 ---
 *Phát triển bởi Dương (DTC).*
