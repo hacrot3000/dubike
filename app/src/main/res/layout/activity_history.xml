@@ -207,6 +207,7 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SOC (%)" android:textColor="#CCCCCC" android:textSize="11sp"/>
                 </LinearLayout>
             </LinearLayout>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="*Điện áp pin ánh xạ theo thang đo bên Phải" android:textColor="#666A80" android:textSize="10sp" android:layout_marginTop="4dp"/>
         </LinearLayout>
 
         <LinearLayout
@@ -318,7 +319,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="* Dòng điện (A) ánh xạ theo cột mốc bên Phải"
+                android:text="* Dòng điện (A) ánh xạ theo thang đo bên Phải"
                 android:textColor="#666A80"
                 android:textSize="10sp"
                 android:layout_marginTop="4dp"/>

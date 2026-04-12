@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.du.dtc.bike.log.BleDebugLogger;
 
 public class HistoryActivity extends AppCompatActivity {
 
@@ -300,6 +301,11 @@ public class HistoryActivity extends AppCompatActivity {
         left.setDrawGridLines(true);
         left.setGridColor(Color.parseColor("#2A2F3E"));
         left.setAxisLineColor(Color.parseColor("#3A3F4E"));
+
+        // 👉 BỔ SUNG: Thêm 10% khoảng trống trên/dưới cho trục Trái
+        left.setSpaceTop(10f);
+        left.setSpaceBottom(10f);
+
         if (!leftUnit.isEmpty()) {
             left.setValueFormatter(new ValueFormatter() {
                 @Override
@@ -316,13 +322,24 @@ public class HistoryActivity extends AppCompatActivity {
             right.setTextColor(Color.parseColor(rightColorHex));
             right.setTextSize(9f);
             right.setDrawGridLines(false);
+
+            // 👉 BỔ SUNG QUAN TRỌNG: Thêm 20% khoảng trống trên/dưới cho trục Phải
+            // Để biểu đồ không bao giờ bị "lao dốc" chạm đáy khi biên độ chỉ dao động 0.01V
+            right.setSpaceTop(20f);
+            right.setSpaceBottom(20f);
+
             right.setValueFormatter(new ValueFormatter() {
                 @Override
                 public String getFormattedValue(float value) {
-                    // Mẹo: Nếu giá trị rất nhỏ (như độ lệch Cell Pin), hiện 3 số thập phân cho rõ
+                    // Lệch Cell Pin (số rất nhỏ) -> Hiện 3 số thập phân
                     if (value > -2f && value < 2f && rightUnit.equals("V")) {
                         return String.format(Locale.getDefault(), "%.3f %s", value, rightUnit);
                     }
+                    // Điện áp Pin -> Hiện 2 số thập phân để phân biệt rõ 76.86 và 76.87
+                    else if (rightUnit.equals("V")) {
+                        return String.format(Locale.getDefault(), "%.2f %s", value, rightUnit);
+                    }
+                    // Các đại lượng khác (Dòng điện A) -> Hiện 1 số thập phân
                     return String.format(Locale.getDefault(), "%.1f %s", value, rightUnit);
                 }
             });
@@ -360,24 +377,108 @@ public class HistoryActivity extends AppCompatActivity {
     }
 
     private void buildPowerChart(List<BikeLogEntity> logs) {
-        List<Entry> vEntries = new ArrayList<>(), cEntries = new ArrayList<>(), sEntries = new ArrayList<>(),
-                socEntries = new ArrayList<>();
+        List<Entry> vEntries = new ArrayList<>();
+        List<Entry> cEntries = new ArrayList<>();
+        List<Entry> sEntries = new ArrayList<>();
+        List<Entry> socEntries = new ArrayList<>();
+
+        final int minVolte = 60;
+
+        // ====================================================================
+        // BƯỚC 1: XỬ LÝ NHIỄU DỮ LIỆU ĐIỆN ÁP (Nội suy các giá trị < minVolte)
+        // ====================================================================
+        boolean hasNonZeroVoltage = false;
+
+        // 1.1 Kiểm tra xem có bất kỳ dữ liệu điện áp nào > minVolte không
+        for (BikeLogEntity e : logs) {
+            if (e.voltage > minVolte) {
+                hasNonZeroVoltage = true;
+                break;
+            }
+        }
+
+        //BleDebugLogger.d("HistoryActivity", "hasNonZeroVoltage: " + logs.toString());
+
+        // 1.2 Nếu có dữ liệu hợp lệ, tiến hành vá các lỗ hổng < minVolte
+        if (hasNonZeroVoltage) {
+            double lastNonZero = -1;
+            int nextNonZeroIndex = -1;
+            double nextNonZero = -1;
+
+            for (int i = 0; i < logs.size(); i++) {
+                BikeLogEntity current = logs.get(i);
+
+                if (current.voltage > minVolte) {
+                    // Cập nhật mốc hợp lệ gần nhất ở phía TRƯỚC
+                    lastNonZero = current.voltage;
+                } else {
+                    // Nếu gặp số 0 -> Tìm mốc hợp lệ gần nhất ở phía SAU
+                    if (nextNonZeroIndex <= i) {
+                        nextNonZero = -1;
+                        for (int j = i + 1; j < logs.size(); j++) {
+                            if (logs.get(j).voltage > minVolte) {
+                                nextNonZero = logs.get(j).voltage;
+                                nextNonZeroIndex = j;
+                                break;
+                            }
+                        }
+                        if (nextNonZero == -1) {
+                            nextNonZeroIndex = logs.size(); // Không tìm thấy nữa, đánh dấu kịch kim để khỏi quét lại
+                        }
+                    }
+
+                    // 1.3 Vá lỗi (Nội suy)
+                    if (lastNonZero != -1 && nextNonZero != -1) {
+                        // Kẹp giữa 2 dữ liệu -> Lấy trung bình cộng
+                        current.voltage = (lastNonZero + nextNonZero) / 2.0;
+                    } else if (lastNonZero != -1) {
+                        // Chỉ có dữ liệu phía trước -> Lấy bằng phía trước
+                        current.voltage = lastNonZero;
+                    } else if (nextNonZero != -1) {
+                        // Chỉ có dữ liệu phía sau (Lỗi ngay lúc mới mở app) -> Lấy bằng phía sau
+                        current.voltage = nextNonZero;
+                    }
+                }
+            }
+        }
+        // ====================================================================
+
+        // BƯỚC 2: Đẩy dữ liệu vào mảng để vẽ biểu đồ
         for (BikeLogEntity e : logs) {
             float x = (e.timestamp - referenceTime) / 1000f;
-            vEntries.add(new Entry(x, (float) e.voltage));
+
+            // Chỉ thêm tọa độ Voltage nếu mảng có dữ liệu hợp lệ
+            if (hasNonZeroVoltage) {
+                vEntries.add(new Entry(x, (float) e.voltage));
+            }
+
             cEntries.add(new Entry(x, (float) e.current));
             sEntries.add(new Entry(x, (float) e.speed));
             socEntries.add(new Entry(x, (float) e.soc));
         }
 
+        // BƯỚC 3: Khởi tạo LineDataSet
         LineDataSet dsV = makeLineDataSet(vEntries, "V", Color.parseColor("#61AFEF"));
-        dsV.setVisible(powerVisible[0]);
         dsV.setAxisDependency(YAxis.AxisDependency.RIGHT);
+
+        // 👉 ĐIỀU KIỆN ĐẶC BIỆT: Nếu toàn bộ Log đều là 0V, tắt hiển thị đường V và làm
+        // mờ nút Legend
+        if (!hasNonZeroVoltage) {
+            dsV.setVisible(false);
+            powerVisible[0] = false;
+            LinearLayout legendV = findViewById(R.id.legend_voltage);
+            if (legendV != null)
+                legendV.setAlpha(0.35f);
+        } else {
+            dsV.setVisible(powerVisible[0]);
+        }
 
         LineDataSet dsC = makeLineDataSet(cEntries, "A", Color.parseColor("#E5C07B"));
         dsC.setVisible(powerVisible[1]);
+
         LineDataSet dsS = makeLineDataSet(sEntries, "S", Color.parseColor("#98C379"));
         dsS.setVisible(powerVisible[2]);
+
         LineDataSet dsSoc = makeLineDataSet(socEntries, "%", Color.parseColor("#56B6C2"));
         dsSoc.setVisible(powerVisible[3]);
 
@@ -476,7 +577,8 @@ public class HistoryActivity extends AppCompatActivity {
         ds.setCircleRadius(2f);
         ds.setDrawValues(false);
 
-        ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        // ds.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        ds.setMode(LineDataSet.Mode.HORIZONTAL_BEZIER);
         ds.setCubicIntensity(0.05f);
 
         ds.setHighlightLineWidth(1f);

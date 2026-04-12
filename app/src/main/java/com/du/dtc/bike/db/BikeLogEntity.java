@@ -34,4 +34,28 @@ public class BikeLogEntity {
     public double adc1;
     public double adc2;
     public double throttle;
+
+    @Override
+    public String toString() {
+        return "{" +
+                "ts=" + timestamp +
+                ", sp=" + speed +
+                ", odo=" + odo +
+                ", vl=" + voltage +
+                ", cr=" + current +
+                ", soc=" + soc +
+                ", tb=" + tempBalanceReg +
+                ", tf=" + tempFet +
+                ", tp1=" + tempPin1 +
+                ", tp2=" + tempPin2 +
+                ", tp3=" + tempPin3 +
+                ", tp4=" + tempPin4 +
+                ", tm=" + tempMotor +
+                ", tc=" + tempController +
+                ", cv=" + cellVoltages +
+                ", a1=" + adc1 +
+                ", a2=" + adc2 +
+                ", thr=" + throttle +
+                '}';
+    }
 }
