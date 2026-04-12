@@ -19,7 +19,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private RadioGroup rgScanFilter;
     private RadioButton rbFilterDatbike, rbFilterAll;
-    private Switch swHistory;
+    private Switch swHistory, swActiveAlarm;
     private EditText edtLogDrive, edtLogPark, edtLogOff;
     private EditText edtPollActive, edtPollBg;
 
@@ -35,6 +35,7 @@ public class SettingsActivity extends AppCompatActivity {
         rbFilterDatbike = findViewById(R.id.rb_filter_datbike);
         rbFilterAll = findViewById(R.id.rb_filter_all);
 
+        swActiveAlarm = findViewById(R.id.sw_active_alarm);
         swHistory = findViewById(R.id.sw_history);
 
         // Logging group
@@ -59,6 +60,7 @@ public class SettingsActivity extends AppCompatActivity {
             rbFilterAll.setChecked(true);
         }
 
+        swActiveAlarm.setChecked(BikeBleFreq.isActiveAlarm);
         swHistory.setChecked(BikeBleFreq.isAllowHistoryLog);
 
         // Logging (chia 1000 ra Giây)
@@ -90,6 +92,7 @@ public class SettingsActivity extends AppCompatActivity {
             SharedPreferences.Editor editor = getSharedPreferences("BikeFreqPrefs", Context.MODE_PRIVATE).edit();
 
             editor.putBoolean("isOnlyShowDatBike", isOnlyShowDatBike);
+            editor.putBoolean("isActiveAlarm", swActiveAlarm.isChecked());
             editor.putBoolean("isAllowHistoryLog", swHistory.isChecked());
 
             // Lưu Logging

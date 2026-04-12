@@ -76,8 +76,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_CODE = 123;
 
-    public static BikeData globalBikeData = new BikeData();
-
     private AlphaAnimation blinkAnimation;
 
     private static final String PREF_NAME = "BikeAppPrefs";
@@ -97,8 +95,7 @@ public class MainActivity extends AppCompatActivity {
             bikeBleLib = bikeService.getBikeBleLib();
 
             // 1. Đồng bộ ngay dữ liệu hiện có trong RAM của Service lên giao diện
-            globalBikeData = bikeService.globalBikeData;
-            runOnUiThread(() -> updateUI(globalBikeData));
+            runOnUiThread(() -> updateUI());
 
             // 2. Ép vòng lặp Bluetooth đọc dữ liệu mới ngay lập tức
             if (bikeBleLib != null) {
@@ -116,9 +113,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (isBound && bikeService != null) {
-                globalBikeData = bikeService.globalBikeData; // Đồng bộ dữ liệu sang biến static cho TechInfoActivity
-                                                             // dùng ké
-                runOnUiThread(() -> updateUI(globalBikeData));
+                runOnUiThread(() -> updateUI());
             }
         }
     };
@@ -600,8 +595,8 @@ public class MainActivity extends AppCompatActivity {
         bikeBleLib.setBinaryListener(new BikeBleLib.BinaryListener() {
             @Override
             public void onBinaryReceived(String uuid8, byte[] bytes) {
-                DataParser.parseBinary(uuid8, bytes, globalBikeData);
-                runOnUiThread(() -> updateUI(globalBikeData));
+                DataParser.parseBinary(uuid8, bytes);
+                runOnUiThread(() -> updateUI());
             }
         });
 
@@ -611,16 +606,17 @@ public class MainActivity extends AppCompatActivity {
                 if (data.containsKey("raw")) {
                     String rawStr = data.get("raw");
                     // Gửi vào DataParser để "đắp" thêm dữ liệu vào biến global
-                    DataParser.parseJson(rawStr, globalBikeData);
+                    DataParser.parseJson(rawStr);
 
                     // Cập nhật UI từ cái kho chung này
-                    runOnUiThread(() -> updateUI(globalBikeData));
+                    runOnUiThread(() -> updateUI());
                 }
             }
         });
     }
 
-    private void updateUI(BikeData data) {
+    private void updateUI() {
+        BikeData data = BikeBackgroundService.globalBikeData;
         // Kiểm tra cờ báo lỗi từ DataParser
         if (DataParser.isDataError && bikeBleLib.isConnected()) {
             warningDataError.postDelayed(new Runnable() {

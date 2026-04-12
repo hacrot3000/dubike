@@ -13,6 +13,7 @@ import android.widget.GridLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import com.du.dtc.bike.ble.BikeData;
+import com.du.dtc.bike.BikeBackgroundService;
 
 public class TechInfoActivity extends AppCompatActivity {
 
@@ -78,14 +79,16 @@ public class TechInfoActivity extends AppCompatActivity {
         updateRunnable = new Runnable() {
             @Override
             public void run() {
-                updateUI(MainActivity.globalBikeData);
+                updateUI();
                 handler.postDelayed(this, 1000); // Cập nhật mỗi giây
             }
         };
         handler.post(updateRunnable);
     }
 
-    private void updateUI(BikeData data) {
+    private void updateUI() {
+        BikeData data = BikeBackgroundService.globalBikeData;
+
         if (data == null)
             return;
 

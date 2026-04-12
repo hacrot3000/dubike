@@ -50,9 +50,19 @@ public class BikeBleLib {
     private Handler keepAliveHandler = new Handler(Looper.getMainLooper());
     private Runnable keepAliveRunnable;
 
-    // BỔ SUNG: Handler cho Data Polling (Đọc Log định kỳ)
+    // BỔ SUNG: Handler cho Data Polling (Đọc tuần tự)
     private Handler pollHandler = new Handler(Looper.getMainLooper());
-    private Runnable pollRunnable;
+    private java.util.Queue<Runnable> pollTaskQueue = new java.util.LinkedList<>();
+    private boolean isPollTaskRunning = false;
+    private boolean isPollingCycleActive = false;
+
+    // Timeout: Nếu xe không trả lời -> Bỏ qua và đọc lệnh tiếp theo
+    private Runnable pollTimeoutRunnable = () -> {
+        BleDebugLogger.e(TAG,
+                "⏳ Quá thời gian đọc data " + BikeBleFreq.timeoutEachPoll + "ms, chuyển sang lệnh kế tiếp...");
+        isPollTaskRunning = false;
+        executeNextPollTask();
+    };
 
     // Handler cho Timeout quét Radar (tránh scan vô thời hạn khi xe xa)
     private Handler scanTimeoutHandler = new Handler(Looper.getMainLooper());
@@ -120,7 +130,10 @@ public class BikeBleLib {
             if (service != null) {
                 BluetoothGattCharacteristic characteristic = service.getCharacteristic(UUID.fromString(charUuidStr));
                 if (characteristic != null) {
-                    bluetoothGatt.readCharacteristic(characteristic);
+                    boolean readResult = bluetoothGatt.readCharacteristic(characteristic);
+                    if (!readResult) {
+                        BleDebugLogger.e(TAG, "Gửi lệnh đọc UUID thất bại: " + charUuidStr);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -129,62 +142,69 @@ public class BikeBleLib {
     }
 
     // ========================================================================
-    // POLLING CHO LOGS & LỖI
+    // POLLING CHO LOGS & LỖI (CƠ CHẾ HÀNG ĐỢI TUẦN TỰ)
     // ========================================================================
     public void startDataPolling(BluetoothGatt gatt) {
-        stopDataPolling(); // Dừng vòng lặp cũ nếu đang chạy
-
-        pollRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (bluetoothGatt != null) {
-
-                    // 1. Đọc RSSI (Keep-alive) tại thời điểm 0ms
-                    bluetoothGatt.readRemoteRssi();
-
-                    // 2. Đọc Battery Log sau 300ms
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        readSpecificChar(DASHBOARD_SVC, CHAR_BATTERY_LOG);
-                    }, 300);
-
-                    // 3. Đọc Bike Log sau 600ms
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        readSpecificChar(DASHBOARD_SVC, CHAR_BIKE_LOG);
-                    }, 600);
-
-                    // 4. Đọc Error sau 900ms
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        readSpecificChar(INFO_SVC, CHAR_ERROR);
-                    }, 900);
-
-                    BleDebugLogger.i(TAG, "Đọc dữ liệu với tần suất " + BikeBleFreq.getPollingInterval());
-                    // Lên lịch cho lần chạy TIẾP THEO dựa vào trạng thái App (Active/Background)
-                    pollHandler.postDelayed(this, BikeBleFreq.getPollingInterval());
-                }
-            }
-        };
-
-        // YÊU CẦU 1: Chạy ngay lập tức (post) thay vì chờ 1 giây (postDelayed)
-        // Để ngay khi xác thực xong là lấy data lên màn hình liền
-        pollHandler.post(pollRunnable);
+        stopDataPolling();
+        isPollingCycleActive = true;
+        runPollingCycle();
     }
 
-    // YÊU CẦU 2: Hàm ép vòng lặp chạy ngay lập tức, bỏ qua khoảng thời gian đang
-    // chờ dở dang
     public void forceImmediatePoll() {
-        if (pollRunnable != null && bluetoothGatt != null) {
-            // Hủy cái đồng hồ đếm ngược cũ (đang chờ 60s hoặc 1 tiếng)
-            pollHandler.removeCallbacks(pollRunnable);
-            // Kích hoạt chạy lại ngay lập tức
-            pollHandler.post(pollRunnable);
+        if (bluetoothGatt != null && isPollingCycleActive) {
+            pollHandler.removeCallbacksAndMessages(null);
+            pollTaskQueue.clear(); // Xóa sạch các lệnh cũ đang kẹt
+            isPollTaskRunning = false;
+            runPollingCycle(); // Chạy lại chu kỳ mới lập tức
             BleDebugLogger.d(TAG, "⚡ Đã ép lấy dữ liệu ngay lập tức do App vừa Active!");
         }
     }
 
     public void stopDataPolling() {
-        if (pollRunnable != null) {
-            pollHandler.removeCallbacks(pollRunnable);
+        isPollingCycleActive = false;
+        pollHandler.removeCallbacksAndMessages(null); // Hủy mọi lịch trình
+        pollTaskQueue.clear();
+        isPollTaskRunning = false;
+    }
+
+    private void runPollingCycle() {
+        if (!isPollingCycleActive || bluetoothGatt == null)
+            return;
+
+        // BẢO VỆ CHỒNG CHÉO: Nếu chu kỳ trước chưa chạy xong, hoãn lại chờ chu kỳ sau
+        if (!pollTaskQueue.isEmpty() || isPollTaskRunning) {
+            pollHandler.postDelayed(this::runPollingCycle, BikeBleFreq.getPollingInterval());
+            return;
         }
+
+        // NẠP ĐẠN: Đưa tất cả các lệnh cần đọc vào hàng đợi
+        pollTaskQueue.offer(() -> bluetoothGatt.readRemoteRssi());
+        pollTaskQueue.offer(() -> readSpecificChar(DASHBOARD_SVC, CHAR_BATTERY_LOG));
+        pollTaskQueue.offer(() -> readSpecificChar(DASHBOARD_SVC, CHAR_BIKE_LOG));
+        pollTaskQueue.offer(() -> readSpecificChar(DASHBOARD_SVC, CHAR_DASHBOARD));
+        pollTaskQueue.offer(() -> readSpecificChar(INFO_SVC, CHAR_ERROR));
+
+        BleDebugLogger.i(TAG, "Đọc dữ liệu với tần suất " + BikeBleFreq.getPollingInterval() + "ms");
+        executeNextPollTask(); // Khai hỏa lệnh đầu tiên
+    }
+
+    private void executeNextPollTask() {
+        pollHandler.removeCallbacks(pollTimeoutRunnable);
+        isPollTaskRunning = false;
+
+        // Nếu đã bắn hết lệnh trong hàng đợi -> Lên lịch cho chu kỳ tiếp theo
+        if (pollTaskQueue.isEmpty()) {
+            pollHandler.postDelayed(this::runPollingCycle, BikeBleFreq.getPollingInterval());
+            return;
+        }
+
+        // Kéo lệnh tiếp theo ra và thực thi
+        isPollTaskRunning = true;
+        Runnable task = pollTaskQueue.poll();
+        task.run();
+
+        // Hẹn giờ Timeout (Tối đa 600ms cho mỗi lệnh)
+        pollHandler.postDelayed(pollTimeoutRunnable, BikeBleFreq.timeoutEachPoll);
     }
 
     // ========================================================================
@@ -228,6 +248,10 @@ public class BikeBleLib {
 
     public void handleCharacteristicReadLogic(BluetoothGattCharacteristic characteristic) {
         BleDebugLogger.log(characteristic);
+        // 👉 KÍCH HOẠT LỆNH TIẾP THEO NGAY KHI NHẬN ĐƯỢC PHẢN HỒI
+        if (isPollingCycleActive && isPollTaskRunning) {
+            pollHandler.post(this::executeNextPollTask);
+        }
         processIncomingData(characteristic);
     }
 
@@ -238,6 +262,11 @@ public class BikeBleLib {
 
     public void handleRssiRead(int rssi) {
         this.lastRssi = rssi;
+
+        // 👉 KÍCH HOẠT LỆNH TIẾP THEO NGAY KHI ĐỌC RSSI THÀNH CÔNG
+        if (isPollingCycleActive && isPollTaskRunning) {
+            pollHandler.post(this::executeNextPollTask);
+        }
 
         // Phát tín hiệu RSSI về Background Service bằng một UUID giả lập
         if (binaryListener != null) {

@@ -80,7 +80,26 @@
             <TextView 
                 android:layout_width="wrap_content" 
                 android:layout_height="wrap_content" 
-                android:text="CHU KỲ LƯU LỊCH SỬ " 
+                android:text="BÁO ĐỘNG &amp; CẢNH BÁO" 
+                android:textColor="#61AFEF" 
+                android:textSize="13sp" 
+                android:textStyle="bold" 
+                android:layout_marginBottom="12dp" />
+            
+            <Switch
+                android:id="@+id/sw_active_alarm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Bật còi hú trên điện thoại khi xe bị dắt"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:layout_marginBottom="16dp"/>
+
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#2A2F3E" android:layout_marginBottom="16dp"/>
+            <TextView 
+                android:layout_width="wrap_content" 
+                android:layout_height="wrap_content" 
+                android:text="CHU KỲ LƯU LỊCH SỬ"
                 android:textColor="#61AFEF" 
                 android:textSize="13sp" 
                 android:textStyle="bold" 

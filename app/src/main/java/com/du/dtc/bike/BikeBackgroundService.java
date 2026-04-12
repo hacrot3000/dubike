@@ -36,7 +36,7 @@ public class BikeBackgroundService extends Service {
 
     private final IBinder binder = new LocalBinder();
     private BikeBleLib bikeBleLib;
-    public BikeData globalBikeData = new BikeData();
+    public static final BikeData globalBikeData = new BikeData();
     private ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
     private long lastLogTime = 0;
 
@@ -123,10 +123,10 @@ public class BikeBackgroundService extends Service {
     private void setupBleListeners() {
         bikeBleLib.setBinaryListener((uuid8, bytes) -> {
             if (uuid8.equals("6d2eb205")) {
-                DataParser.parseDashboard(bytes, globalBikeData);
+                DataParser.parseDashboard(bytes);
                 processDataUpdate();
             } else if (uuid8.equals("eec8fd7f")) {
-                DataParser.parseLockStatus(bytes, globalBikeData);
+                DataParser.parseLockStatus(bytes);
                 processDataUpdate();
             } else if (uuid8.equals("c8eaf27b") || uuid8.equals("c75ebe03")) {
                 // Auth Token / Card
@@ -135,7 +135,7 @@ public class BikeBackgroundService extends Service {
                 globalBikeData.rssi = bytes[0]; // Cập nhật biến Global
                 broadcastDataUpdate(); // CHỈ bắn broadcast để UI update, KHÔNG lưu log database
             } else {
-                DataParser.parseBinary(uuid8, bytes, globalBikeData);
+                DataParser.parseBinary(uuid8, bytes);
             }
         });
     }
@@ -146,7 +146,7 @@ public class BikeBackgroundService extends Service {
         bikeBleLib.startTargetedAutoConnect(macAddress, data -> {
             // Callback này dùng để hứng dữ liệu text/chuỗi (như tên xe, số khung)
             if (data.containsKey("raw")) {
-                DataParser.parseJson(data.get("raw"), globalBikeData);
+                DataParser.parseJson(data.get("raw"));
                 processDataUpdate();
             }
         });
@@ -284,7 +284,11 @@ public class BikeBackgroundService extends Service {
     }
 
     private void checkAlarmStatus() {
-        if (globalBikeData.isAlarmSounding) {
+        if (!BikeBleFreq.isActiveAlarm) {
+            return;
+        }
+
+        if (globalBikeData.isAlarmSounding || globalBikeData.pcbState == BikeData.PCB_STATE_MODE_ON) {
             if (!wasAlarming) {
                 isUserMuted = false; // Reset trạng thái mute khi có đợt báo động mới
                 wasAlarming = true;

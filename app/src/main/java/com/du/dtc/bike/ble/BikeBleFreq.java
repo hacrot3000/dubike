@@ -3,13 +3,16 @@ package com.du.dtc.bike.ble;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.du.dtc.bike.activity.MainActivity;
+import com.du.dtc.bike.BikeBackgroundService;
 
 public class BikeBleFreq {
+
+    public static int timeoutEachPoll = 500;
 
     public static boolean isOnlyShowDatBike = true;
     public static boolean isAppActive = true;
     public static boolean isAllowHistoryLog = true;
+    public static boolean isActiveAlarm = true;
 
     // Các biến lưu trữ (Đơn vị: Mili-giây)
     public static int keepAliveInterval = 5000;
@@ -31,6 +34,7 @@ public class BikeBleFreq {
         SharedPreferences prefs = context.getSharedPreferences("BikeFreqPrefs", Context.MODE_PRIVATE);
         isAllowHistoryLog = prefs.getBoolean("isAllowHistoryLog", true);
         isOnlyShowDatBike = prefs.getBoolean("isOnlyShowDatBike", true);
+        isActiveAlarm = prefs.getBoolean("isActiveAlarm", true);
         keepAliveInterval = prefs.getInt("keepAliveInterval", 5000);
         scanRadarActive = prefs.getInt("scanRadarActive", 1000);
         scanRadarBg = prefs.getInt("scanRadarBg", 60000);
@@ -62,13 +66,14 @@ public class BikeBleFreq {
         else if (!isAllowHistoryLog)
             defaultPool = pollBg;
 
-        else if (MainActivity.globalBikeData != null) {
-            int state = MainActivity.globalBikeData.pcbState;
-            if (state == BikeData.PCB_STATE_OFF)
-                defaultPool = pollOff;
-            else if (state == BikeData.PCB_STATE_MODE_D || state == BikeData.PCB_STATE_MODE_S)
-                defaultPool = pollDrive;
-        }
+        // else if (BikeBackgroundService.globalBikeData != null) {
+        // int state = BikeBackgroundService.globalBikeData.pcbState;
+        // if (state == BikeData.PCB_STATE_OFF)
+        // defaultPool = pollOff;
+        // else if (state == BikeData.PCB_STATE_MODE_D || state ==
+        // BikeData.PCB_STATE_MODE_S)
+        // defaultPool = pollDrive;
+        // }
 
         return Math.min(defaultPool, getLogInterval());
     }
@@ -77,8 +82,8 @@ public class BikeBleFreq {
         if (!isAllowHistoryLog)
             return Integer.MAX_VALUE;
 
-        if (MainActivity.globalBikeData != null) {
-            int state = MainActivity.globalBikeData.pcbState;
+        if (BikeBackgroundService.globalBikeData != null) {
+            int state = BikeBackgroundService.globalBikeData.pcbState;
             if (state == BikeData.PCB_STATE_MODE_D || state == BikeData.PCB_STATE_MODE_S)
                 return logDrive;
             if (state == BikeData.PCB_STATE_PARK)

@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import com.du.dtc.bike.log.BleDebugLogger;
 import com.du.dtc.bike.activity.MainActivity;
+import com.du.dtc.bike.BikeBackgroundService;
 
 public class DataParser {
 
@@ -29,7 +30,9 @@ public class DataParser {
         errorResetCD = 50;
     }
 
-    public static void parseBinary(String uuid, byte[] bytes, BikeData data) {
+    public static void parseBinary(String uuid, byte[] bytes) {
+        BikeData data = BikeBackgroundService.globalBikeData;
+
         if (bytes == null || bytes.length == 0)
             return;
 
@@ -65,7 +68,7 @@ public class DataParser {
                 case "eec8fd7f": {
                     if (bytes.length >= 1) {
                         int lockFlag = buf.get(0) & 0xFF;
-                        updateLockStatus(lockFlag, data);
+                        updateLockStatus(lockFlag);
                     }
                     break;
                 }
@@ -90,9 +93,11 @@ public class DataParser {
         }
     }
 
-    public static void parseJson(String jsonStr, BikeData data) {
+    public static void parseJson(String jsonStr) {
         if (jsonStr == null || jsonStr.isEmpty())
             return;
+
+        BikeData data = BikeBackgroundService.globalBikeData;
 
         checkErrorReset();
 
@@ -243,9 +248,11 @@ public class DataParser {
      * Giải mã gói dữ liệu Dashboard (41 bytes) từ xe.
      * Sử dụng class DashboardTelemetry làm trung gian giải mã.
      */
-    public static void parseDashboard(byte[] bytes, BikeData data) {
+    public static void parseDashboard(byte[] bytes) {
         if (bytes == null || bytes.length == 0)
             return;
+
+        BikeData data = BikeBackgroundService.globalBikeData;
 
         checkErrorReset();
 
@@ -291,15 +298,17 @@ public class DataParser {
      * Giải mã trạng thái Khóa thông minh (Smartkey Echo) từ xe.
      * Trả về các cờ báo hiệu xe đang khóa, mở, hoặc đang réo còi báo động.
      */
-    public static void parseLockStatus(byte[] bytes, BikeData data) {
+    public static void parseLockStatus(byte[] bytes) {
         if (bytes == null || bytes.length == 0)
             return;
+
+        BikeData data = BikeBackgroundService.globalBikeData;
 
         checkErrorReset();
 
         try {
             int lockFlag = bytes[0] & 0xFF;
-            updateLockStatus(lockFlag, data);
+            updateLockStatus(lockFlag);
 
         } catch (Exception e) {
             BleDebugLogger.e("DataParser", "Lỗi parseLockStatus: " + e.getMessage());
@@ -307,7 +316,12 @@ public class DataParser {
         }
     }
 
-    private static void updateLockStatus(int lockFlag, BikeData data) {
+    private static void updateLockStatus(int lockFlag) {
+        BikeData data = BikeBackgroundService.globalBikeData;
+
+        if (data == null)
+            return;
+
         data.isAlarmSounding = false; // <--- Tắt báo động
         data.isArmed = false; // <--- Tắt báo động
 
