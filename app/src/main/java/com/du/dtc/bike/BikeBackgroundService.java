@@ -48,6 +48,9 @@ public class BikeBackgroundService extends Service {
 
     public static final String ACTION_MUTE_ALARM = "com.du.dtc.bike.ACTION_MUTE_ALARM";
 
+    private android.os.Handler connectionTimeoutHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable connectionTimeoutRunnable;
+
     public class LocalBinder extends Binder {
         public BikeBackgroundService getService() {
             return BikeBackgroundService.this;
@@ -142,8 +145,31 @@ public class BikeBackgroundService extends Service {
 
     public void connectToDevice(String macAddress) {
         updateNotification("Đang kết nối đến " + macAddress);
-        // Dùng chế độ Radar ngầm thay vì connect trực tiếp
+
+        // 👉 1. Xóa Timeout cũ nếu đang đếm ngược
+        if (connectionTimeoutRunnable != null) {
+            connectionTimeoutHandler.removeCallbacks(connectionTimeoutRunnable);
+        }
+
+        // 👉 2. Thiết lập Timeout 15 giây
+        connectionTimeoutRunnable = () -> {
+            if (bikeBleLib != null && !bikeBleLib.isConnected()) {
+                // Timeout mà chưa kết nối thành công -> Gửi Broadcast báo lỗi lên UI
+                Intent intent = new Intent("com.du.dtc.bike.SHOW_CONFLICT_DIALOG");
+                intent.setPackage(getPackageName());
+                sendBroadcast(intent);
+                updateNotification("Lỗi kết nối. Vui lòng kiểm tra xung đột App DatBike.");
+            }
+        };
+        connectionTimeoutHandler.postDelayed(connectionTimeoutRunnable, 15000); // Chờ tối đa 15s
+
+        // 3. Dùng chế độ Radar ngầm thay vì connect trực tiếp
         bikeBleLib.startTargetedAutoConnect(macAddress, data -> {
+            // 👉 Đã kết nối và nhận dữ liệu -> Lập tức hủy báo lỗi Timeout
+            if (connectionTimeoutRunnable != null) {
+                connectionTimeoutHandler.removeCallbacks(connectionTimeoutRunnable);
+        }
+
             // Callback này dùng để hứng dữ liệu text/chuỗi (như tên xe, số khung)
             if (data.containsKey("raw")) {
                 DataParser.parseJson(data.get("raw"));

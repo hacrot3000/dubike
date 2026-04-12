@@ -98,11 +98,6 @@ public class HistoryActivity extends AppCompatActivity {
         loadFromDatabase();
     }
 
-    // ... (Giữ nguyên các hàm setupTimePickers, validateAndApplyTimeFilter,
-    // updateTimeFilterUI, getFilterTimestamps) ...
-    // ... [ĐỂ TRÁNH QUÁ DÀI, BẠN GIỮ NGUYÊN CÁC HÀM XỬ LÝ TIME PICKER TỪ CODE CŨ
-    // CỦA BẠN NHÉ] ...
-
     private void setupTimePickers() {
         tvSelectDate.setOnClickListener(v -> {
             DatePickerDialog dpd = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {

@@ -84,6 +84,15 @@ public class MainActivity extends AppCompatActivity {
     private BikeBackgroundService bikeService;
     private boolean isBound = false;
 
+    private final BroadcastReceiver conflictDialogReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if ("com.du.dtc.bike.SHOW_CONFLICT_DIALOG".equals(intent.getAction())) {
+                showConflictDialog();
+            }
+        }
+    };
+
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -820,6 +829,13 @@ public class MainActivity extends AppCompatActivity {
         } else {
             registerReceiver(dataUpdateReceiver, filter);
         }
+
+        IntentFilter filter2 = new IntentFilter("com.du.dtc.bike.SHOW_CONFLICT_DIALOG");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(conflictDialogReceiver, filter2, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(conflictDialogReceiver, filter2);
+        }
     }
 
     @Override
@@ -830,6 +846,8 @@ public class MainActivity extends AppCompatActivity {
             isBound = false;
         }
         unregisterReceiver(dataUpdateReceiver);
+
+        unregisterReceiver(conflictDialogReceiver);
     }
 
     private void checkAndRequestBatteryOptimization() {
@@ -964,5 +982,59 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return true;
+    }
+
+    private void showConflictDialog() {
+        if (isFinishing() || isDestroyed())
+            return;
+
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        builder.setTitle("⚠️ Xung đột ứng dụng");
+
+        // Tạo Layout chứa Text và Ảnh
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(60, 40, 60, 40);
+
+        android.widget.TextView tv1 = new android.widget.TextView(this);
+        tv1.setText("Ứng dụng này có thể bị xung đột Bluetooth với ứng dụng DatBike gốc.\n\n" +
+                "Hãy mở ứng dụng DatBike, nếu bạn thấy trạng thái đang là:");
+        tv1.setTextColor(getColor(R.color.text_main));
+        tv1.setTextSize(14f);
+        layout.addView(tv1);
+
+        // --- ĐOẠN CODE ĐIỀU CHỈNH KÍCH THƯỚC HÌNH ẢNH ---
+        android.widget.ImageView iv = new android.widget.ImageView(this);
+        iv.setImageResource(R.drawable.datbike_connect);
+        iv.setAdjustViewBounds(true); // Giữ đúng tỉ lệ khung hình khi chỉnh chiều cao
+
+        // Tính toán chiều cao tương đương 4 dòng văn bản (khoảng 85dp)
+        int heightInPx = (int) android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_DIP, 85, getResources().getDisplayMetrics());
+
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, heightInPx);
+        lp.gravity = android.view.Gravity.CENTER_HORIZONTAL; // Căn giữa hình ảnh
+        lp.setMargins(0, 30, 0, 30); // Thêm khoảng cách trên dưới
+        iv.setLayoutParams(lp);
+        // -----------------------------------------------
+
+        layout.addView(iv);
+
+        android.widget.TextView tv2 = new android.widget.TextView(this);
+        tv2.setText("thì hãy bấm vào để tạm ngắt kết nối.\n\n" +
+                "Sau đó quay lại đây và kết nối lại. Sau khi kết nối thành công bạn có thể quay lại ứng dụng DatBike để mở kết nối lại như bình thường.\n\n"
+                +
+                "💡 Nếu theo cách trên vẫn không được, hãy thử tắt Bluetooth, chờ ít giây rồi mở lại và thử kết nối lại.\n\n"
+                +
+                "Sau khi kết nối thành công, hai ứng dụng có thể chạy song song cùng nhau mà không gặp vấn đề gì.");
+        tv2.setTextColor(getColor(R.color.text_main));
+        tv2.setTextSize(14f);
+        layout.addView(tv2);
+
+        builder.setView(layout);
+        builder.setPositiveButton("Đã hiểu", (dialog, which) -> dialog.dismiss());
+
+        builder.show();
     }
 }

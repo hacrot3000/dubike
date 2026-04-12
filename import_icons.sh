@@ -17,7 +17,7 @@ fi
 mkdir -p "$DEST_DIR"
 
 # Danh sách 4 icon cần xử lý
-ICONS=("unlock.png")
+ICONS=("datbike_connect.png")
 
 echo "🚀 Bắt đầu import và resize icons..."
 
